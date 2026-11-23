@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "My desk",
-    "description": "A read-only workbench that shows every local Session, background job, scheduled task, goal, Team task, and the local apps that are currently running. Open it from the sidebar entry \"My desk\"; rows with a target open that Session or app. It reads the state those services already own — it appends no Session event, changes no task state, and sends nothing off the machine. While the page is open it refreshes every 2.5 seconds; closing the page or disabling the plugin stops those reads. Jumping to a local app is the only side effect, it only happens on a click, and only allowlisted apps are accepted."
+    "description": "A read-only observatory for what is running and what just changed on this machine: DSH Sessions, background jobs, scheduled tasks, goals and Team tasks, Codex sessions, DSH's WeChat channel, app data changes, and the local apps currently running. Open it from the sidebar entry \"My desk\" or the island at the top of the window; rows with a target open that Session or app, and the desk filters by text and status. It reads only what those sources already store — no Session event is appended, no task state changes, and nothing leaves the machine. While open it refreshes every 2.5 seconds (the island uses 10 seconds while collapsed). Jumping to a local app is the only side effect, it only happens on a click, and only allowlisted apps are accepted."
   }
 }

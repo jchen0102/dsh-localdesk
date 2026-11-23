@@ -2,7 +2,7 @@
 
 A read-only observatory for your machine: what is running right now, and what just changed.
 
-## What it shows (0.3.0 / P3)
+## What it shows (0.4.0 / P4)
 
 | Section | Source | Per row |
 | --- | --- | --- |
@@ -23,11 +23,16 @@ A read-only observatory for your machine: what is running right now, and what ju
 - One read-only route `GET /dsh-mydesk/state` behind the same connection trust as the app.
 - One action route `POST /dsh-mydesk/open`, used only when you click a row whose target is a local app. It accepts an allowlisted app name or an `http(s)` URL, never a shell string.
 
+## Filtering
+
+The desk has a search box (title, path, owner, meta, tags) and status chips (All / Running / Waiting / Changed). Filtering is client-side: the summary above stays global, section counts show what survived the filter, and an empty result says so instead of hiding the page.
+
 ## Boundaries
 
 - **Read-only**: no Session event is appended, no task state changes, nothing leaves the machine.
 - **This process, this machine**: DSH items come from the current process; Codex, app-data and app rows come from the machine. Durable Sessions from other DSH processes are not listed yet (P2 scope kept this out).
 - **No content reads**: only metadata — titles, states, timestamps, counts.
+- **Kim is not read**: its local databases are SQLCipher-encrypted; only the separate `mycli` tool can open them. The Kim row you see comes from the generic app-data watcher, not from decryption.
 - Plugin subprocesses are not sandboxed by DSH, so every command this plugin runs is fixed-argv and allowlisted (see `docs/DECISIONS.md` D8).
 
 ## Layout
@@ -35,6 +40,7 @@ A read-only observatory for your machine: what is running right now, and what ju
 - Sources live in `index.js` behind one `Item` contract (see `docs/CONTRACTS.md`); the client renders that contract and nothing else.
 - `test/probe.mjs` runs both halves against fixtures and a fake Cordis context: `node test/probe.mjs` (64 checks).
 - The island is client-only; it reads the same `/state` route with a lower cadence while collapsed.
+- No screenshots are bundled: this environment has no browser control to capture the real page. The layout follows the shipped DSH management pages and uses only `--dsw-alias-*` theme tokens.
 
 ## Install
 

@@ -433,6 +433,18 @@ const clientModule = clientSpec.factory((name) => {
 })
 clientModule.apply(slotCtx)
 
+const clientSource = fs.readFileSync(ROOT + 'client.js', 'utf8')
+const keySet = (block) => new Set([...block.matchAll(/^\s{6}(\w+):/gm)].map((match) => match[1]))
+const enKeys = keySet(clientSource.match(/const EN = \{([\s\S]*?)\n    \}/)[1])
+const zhKeys = keySet(clientSource.match(/const ZH = \{([\s\S]*?)\n    \}/)[1])
+const usedKeys = new Set([...clientSource.matchAll(/(?<![A-Za-z_])t\('([^']+)'\)/g)].map((match) => match[1]))
+check(
+  'every used i18n key exists in both dictionaries',
+  [...usedKeys].every((key) => enKeys.has(key) && zhKeys.has(key)),
+  [...usedKeys].filter((key) => !enKeys.has(key) || !zhKeys.has(key)).join(','),
+)
+check('EN and ZH key sets match', enKeys.size === zhKeys.size && [...enKeys].every((key) => zhKeys.has(key)), `${enKeys.size}/${zhKeys.size}`)
+
 const panellist = registrations.find((entry) => entry.options.name === 'sidebar.panellist')
 const main = registrations.find((entry) => entry.options.name === 'main')
 const overlay = registrations.find((entry) => entry.options.name === 'shell.overlay')
@@ -467,8 +479,15 @@ function collect(node, predicate, out = []) {
   return out
 }
 
-function render(data) {
-  ReactState.queue = [undefined, { status: 'ready', data, error: null, at: now }, undefined, undefined]
+function render(data, options = {}) {
+  ReactState.queue = [
+    undefined,
+    { status: 'ready', data, error: null, at: now },
+    undefined,
+    undefined,
+    options.query,
+    options.filter,
+  ]
   const element = main.component({ ctx: slotCtx })
   return element.type(element.props)
 }
@@ -494,6 +513,14 @@ check('app rows call open route', fetches.some((entry) => entry.url === '/dsh-my
 
 const processRows = collect(render(state), (node) => node.props?.role === 'button' && String(node.props.title ?? '').includes('pid'))
 check('process rows carry pid meta', processRows.length >= 1)
+
+const queryText = text(render(state, { query: 'project-x' }))
+check('search narrows to matching items', queryText.includes('project-x') && !queryText.includes('pnpm -r test'))
+check('search keeps the matched section title', queryText.includes('Codex 会话'))
+const runningText = text(render(state, { filter: 'running' }))
+check('running filter hides waiting items', runningText.includes('写 Host 汇总路由') && !runningText.includes('补空状态'))
+const noMatchText = text(render(state, { query: 'zzz-no-such-thing' }))
+check('no-match state renders', noMatchText.includes('没有匹配的条目'))
 
 const emptyState = {
   generatedAt: now,

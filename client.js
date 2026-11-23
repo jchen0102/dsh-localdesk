@@ -76,6 +76,12 @@ window.__ModuleLoader__.load({
       islandOpen: 'Open desk',
       islandHint: 'Esc to close',
       islandEmpty: 'Nothing to show',
+      searchPlaceholder: 'Filter by title, path, or owner',
+      filterAll: 'All',
+      filterRunning: 'Running',
+      filterWaiting: 'Waiting',
+      filterChanged: 'Changed',
+      noMatch: 'Nothing matches this filter',
     }
 
     const ZH = {
@@ -141,6 +147,12 @@ window.__ModuleLoader__.load({
       islandOpen: '打开工作台',
       islandHint: 'Esc 收起',
       islandEmpty: '暂时没有可显示的',
+      searchPlaceholder: '按标题、路径或归属筛选',
+      filterAll: '全部',
+      filterRunning: '在跑',
+      filterWaiting: '等待',
+      filterChanged: '有变动',
+      noMatch: '没有匹配的条目',
     }
 
     const CSS = `
@@ -187,6 +199,13 @@ window.__ModuleLoader__.load({
       .md-more{font-size:11.5px;color:var(--dsw-alias-label-secondary);padding:9px 14px;border-top:1px solid var(--dsw-alias-border-l1)}
       .md-foot{font-size:11.5px;color:var(--dsw-alias-label-secondary);padding-top:2px}
       .md-notice{font-size:11.5px;color:var(--dsw-alias-state-error-primary)}
+      .md-toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+      .md-search{flex:1 1 220px;min-width:150px;height:30px;padding:0 10px;border-radius:8px;border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);font:inherit;font-size:12.5px;outline:none}
+      .md-search:focus{border-color:var(--dsw-alias-brand-primary)}
+      .md-filters{display:inline-flex;gap:4px;flex:none}
+      .md-chipbtn{appearance:none;font:inherit;font-size:11.5px;line-height:1;padding:6px 9px;border-radius:999px;border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-secondary);cursor:pointer}
+      .md-chipbtn:hover{background:var(--dsw-alias-bg-layer-2)}
+      .md-chipbtn--active{color:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-2)}
       .mi-wrap{position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:60;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none}
       .mi-pill{pointer-events:auto;display:inline-flex;align-items:center;gap:7px;height:30px;padding:0 12px;border-radius:999px;border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-overlay);box-shadow:0 2px 12px rgba(0,0,0,.14);color:var(--dsw-alias-label-primary);font:inherit;font-size:12px;cursor:pointer}
       .mi-pill:hover{border-color:var(--dsw-alias-border-l2)}
@@ -346,6 +365,8 @@ window.__ModuleLoader__.load({
         const t = locale.bind(NS)
         const [state, refresh] = useDesk()
         const [notice, setNotice] = React.useState('')
+        const [query, setQuery] = React.useState('')
+        const [statusFilter, setStatusFilter] = React.useState('all')
 
         const data = state.data
         const stats = data?.stats ?? {}
@@ -416,6 +437,23 @@ window.__ModuleLoader__.load({
 
         const sectionTitle = (kind) => t(KIND_KEYS[kind] ?? 'kindItems')
 
+        const needle = query.trim().toLowerCase()
+        const matches = (item) => {
+          if (statusFilter === 'running' && item.status !== 'running') return false
+          if (statusFilter === 'waiting' && item.status !== 'waiting') return false
+          if (statusFilter === 'changed' && item.status !== 'changed') return false
+          if (!needle) return true
+          const haystack = [item.title, item.subtitle, ...(item.meta ?? []), ...(item.tags ?? [])]
+            .filter((value) => typeof value === 'string')
+            .join(' ')
+            .toLowerCase()
+          return haystack.includes(needle)
+        }
+        const filtering = needle.length > 0 || statusFilter !== 'all'
+        const visibleSections = sections
+          .map((section) => ({ ...section, items: (section.items ?? []).filter(matches) }))
+          .filter((section) => section.items.length > 0)
+
         const scopeLabel = (sourceId) => {
           const source = sources.find((entry) => entry.id === sourceId)
           if (!source) return ''
@@ -474,7 +512,48 @@ window.__ModuleLoader__.load({
             ),
           )
 
-          for (const section of sections) {
+          body.push(
+            h(
+              'div',
+              { className: 'md-toolbar', key: 'toolbar' },
+              h('input', {
+                className: 'md-search',
+                type: 'search',
+                value: query,
+                placeholder: t('searchPlaceholder'),
+                'aria-label': t('searchPlaceholder'),
+                onChange: (event) => setQuery(event.target.value),
+              }),
+              h(
+                'div',
+                { className: 'md-filters' },
+                [
+                  ['all', t('filterAll')],
+                  ['running', t('filterRunning')],
+                  ['waiting', t('filterWaiting')],
+                  ['changed', t('filterChanged')],
+                ].map(([value, label]) =>
+                  h(
+                    'button',
+                    {
+                      key: 'filter:' + value,
+                      type: 'button',
+                      className: 'md-chipbtn' + (statusFilter === value ? ' md-chipbtn--active' : ''),
+                      'aria-pressed': statusFilter === value,
+                      onClick: () => setStatusFilter(value),
+                    },
+                    label,
+                  ),
+                ),
+              ),
+            ),
+          )
+
+          if (filtering && visibleSections.length === 0) {
+            body.push(h('div', { className: 'md-empty', key: 'nomatch' }, t('noMatch')))
+          }
+
+          for (const section of visibleSections) {
             const error = sourceError(section.source)
             body.push(
               h(
@@ -484,7 +563,7 @@ window.__ModuleLoader__.load({
                   'div',
                   { className: 'md-cardhead' },
                   h('span', { className: 'md-cardtitle' }, sectionTitle(section.kind)),
-                  h('span', { className: 'md-count' }, String(section.count ?? 0)),
+                  h('span', { className: 'md-count' }, String((section.items ?? []).length)),
                   h(
                     'span',
                     { className: 'md-scope' },
