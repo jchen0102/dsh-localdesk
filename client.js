@@ -313,7 +313,7 @@ window.__ModuleLoader__.load({
               status: previous.data ? 'stale' : 'failed',
               data: previous.data,
               error: String(error?.message ?? error),
-              at: previous.data ? Date.now() : 0,
+              at: previous.at,
             }))
           }
           const hidden = typeof document !== 'undefined' && document.hidden === true
@@ -686,7 +686,13 @@ window.__ModuleLoader__.load({
         if (metrics.length === 0) metrics.push(['total', total])
 
         const metricLabel = (key) =>
-          key === 'run' ? t('islandRun') : key === 'wait' ? t('islandWait') : key === 'changed' ? t('islandChanged') : ''
+          key === 'run'
+            ? t('islandRun')
+            : key === 'wait'
+              ? t('islandWait')
+              : key === 'changed'
+                ? t('islandChanged')
+                : t('statItems')
 
         const pill = h(
           'button',

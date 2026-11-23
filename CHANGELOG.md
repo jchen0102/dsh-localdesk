@@ -4,7 +4,10 @@ All notable changes to this package. Format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
-Nothing yet.
+### Fixed
+
+- The freshness label no longer claims "updated just now" after a failed refresh; it keeps the last successful read time, matching the stale banner.
+- The island pill labels its total when every item is idle, instead of showing a bare number.
 
 ## 0.4.0 - 2026-11-23
 
