@@ -2,7 +2,7 @@
 
 A read-only observatory for your machine: what is running right now, and what just changed.
 
-## What it shows (0.4.0 / P4)
+## What it shows (0.4.1 / P4)
 
 | Section | Source | Per row |
 | --- | --- | --- |
@@ -48,6 +48,7 @@ The desk has a search box (title, path, owner, meta, tags) and status chips (All
 - Hard dependencies: `webServer`, `connection`, `agents`. Without them the plugin does not activate.
 - Optional services: `jobs`, `schedule`, `goals`, `agentTeams`, `subprocess`. A profile that lacks one degrades per source — that source reports `unavailable`/`error`, every other source keeps working (the probe covers exactly this).
 - A source that fails at scan time is isolated: its card shows an error, the rest of the desk still renders.
+- The Host reports its version through `/state`; if the page is newer than the Host half (a client update without a restart), the desk says so and asks for a restart instead of silently showing an older source set.
 
 ## Install
 

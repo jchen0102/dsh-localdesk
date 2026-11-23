@@ -26,6 +26,7 @@ export const name = 'dsh-mydesk'
 
 export const inject = ['webServer', 'connection', 'agents']
 
+const VERSION = '0.4.1'
 const ROUTE = '/dsh-mydesk'
 const STATE_PATH = `${ROUTE}/state`
 const OPEN_PATH = `${ROUTE}/open`
@@ -844,6 +845,7 @@ async function readState(ctx) {
   const okSources = reports.filter((report) => report.meta.health.status === 'ok').length
 
   return {
+    version: VERSION,
     generatedAt: Date.now(),
     now,
     budgetMs: Date.now() - started,

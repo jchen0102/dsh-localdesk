@@ -289,6 +289,8 @@ const stateRes = await call(route, makeReq('/dsh-mydesk/state'))
 check('state 200', stateRes.statusCode === 200, String(stateRes.statusCode))
 check('state is json', stateRes.headers['content-type']?.includes('application/json') === true)
 const state = JSON.parse(stateRes.body)
+const packageVersion = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version
+check('state carries the Host version', state.version === packageVersion, `${state.version} vs ${packageVersion}`)
 const sectionIds = state.sections.map((section) => section.id)
 check(
   'all nine sections present',
@@ -527,6 +529,9 @@ function render(data, options = {}) {
 
 const rendered = text(render(state))
 check('panel renders title', rendered.includes('我的工作台'), rendered.slice(0, 3).join('|'))
+check('no stale-host banner when versions match', !rendered.includes('Host 端版本比页面旧'))
+const staleHostText = text(render({ ...state, version: '0.0.9' }))
+check('stale-host banner when versions differ', staleHostText.some((line) => line.includes('Host 端版本比页面旧') && line.includes('0.0.9')))
 check(
   'section titles localized',
   ['会话', '后台作业', '定时任务', '目标', '团队任务', 'Codex 会话', '微信渠道', '应用数据变动', '本机应用'].every((label) => rendered.includes(label)),

@@ -11,6 +11,7 @@ window.__ModuleLoader__.load({
     const React = require('react')
     const h = React.createElement
     const NS = 'dsh-mydesk'
+    const VERSION = '0.4.1'
     const POLL_MS = 2500
 
     const EN = {
@@ -82,6 +83,8 @@ window.__ModuleLoader__.load({
       filterWaiting: 'Waiting',
       filterChanged: 'Changed',
       noMatch: 'Nothing matches this filter',
+      hostStale: 'The Host half is older than this page',
+      hostStaleHint: 'restart DSH to load the current sources. Until then this desk shows what the old Host still returns.',
     }
 
     const ZH = {
@@ -153,6 +156,8 @@ window.__ModuleLoader__.load({
       filterWaiting: '等待',
       filterChanged: '有变动',
       noMatch: '没有匹配的条目',
+      hostStale: 'Host 端版本比页面旧',
+      hostStaleHint: '重启 DSH 才会加载当前的源；在那之前只能看到旧 Host 返回的内容。',
     }
 
     const CSS = `
@@ -376,6 +381,8 @@ window.__ModuleLoader__.load({
         const now = Date.now()
 
         const sourceError = (sourceId) => sources.find((source) => source.id === sourceId)?.health?.error
+        const hostVersion = typeof data?.version === 'string' ? data.version : ''
+        const versionMismatch = hostVersion.length > 0 && hostVersion !== VERSION
 
         const activate = (item) => {
           activateItem(ctx, item, () => setNotice(t('openFailed')))
@@ -491,6 +498,16 @@ window.__ModuleLoader__.load({
             ),
           )
         } else {
+          if (versionMismatch) {
+            body.push(
+              h(
+                'div',
+                { className: 'md-error', key: 'host-stale' },
+                h('span', { className: 'md-errortitle' }, `${t('hostStale')} · v${hostVersion} → v${VERSION}`),
+                h('span', { className: 'md-errordetail' }, t('hostStaleHint')),
+              ),
+            )
+          }
           if (state.status === 'stale') {
             body.push(
               h(
@@ -659,7 +676,9 @@ window.__ModuleLoader__.load({
         const sources = Array.isArray(data?.sources) ? data.sources : []
         const sections = Array.isArray(data?.sections) ? data.sections : []
         const total = stats.items ?? 0
-        const failing = state.status === 'failed' || sources.some((source) => source.health?.error)
+        const staleHost =
+          typeof data?.version === 'string' && data.version.length > 0 && data.version !== VERSION
+        const failing = state.status === 'failed' || staleHost || sources.some((source) => source.health?.error)
         if (total === 0 && !failing) return null
 
         const openDesk = () => {

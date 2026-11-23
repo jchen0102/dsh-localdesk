@@ -2,6 +2,12 @@
 
 All notable changes to this package. Format follows [Keep a Changelog](https://keepachangelog.com/), versions follow SemVer.
 
+## 0.4.1 - 2026-11-23
+
+### Added
+
+- `GET /dsh-mydesk/state` carries the Host version, and the desk warns when the Host half is older than the loaded page, telling the user to restart DSH. This covers the case where a client update lands but the Host module is still the previous generation.
+
 ## Unreleased
 
 ### Fixed
