@@ -31,6 +31,29 @@ fs.writeFileSync(
     JSON.stringify({ type: 'event_msg', ordinal: 2, timestamp: new Date(Date.now() - 3000).toISOString(), payload: { type: 'task_started' } }),
   ].join('\n') + '\n',
 )
+const writeCodex = (name, sessionId, cwd, marker, stamp) => {
+  const file = path.join(codexDir, name)
+  fs.writeFileSync(
+    file,
+    [
+      JSON.stringify({
+        type: 'session_meta',
+        ordinal: 1,
+        timestamp: new Date(stamp).toISOString(),
+        payload: { session_id: sessionId, cwd, cli_version: '0.9.0', model_provider: 'openai', source: 'cli' },
+      }),
+      JSON.stringify({ type: 'event_msg', ordinal: 2, timestamp: new Date(stamp).toISOString(), payload: { type: marker } }),
+    ].join('\n') + '\n',
+  )
+  return file
+}
+const staleFile = writeCodex('rollout-stale.jsonl', 'codex-stale', '/tmp/stale-proj', 'task_started', Date.now() - 2 * 60 * 60 * 1000)
+const staleAt = (Date.now() - 2 * 60 * 60 * 1000) / 1000
+fs.utimesSync(staleFile, staleAt, staleAt)
+const doneFile = writeCodex('rollout-done.jsonl', 'codex-done', '/tmp/done-proj', 'task_complete', Date.now() - 2 * 24 * 60 * 60 * 1000)
+const doneAt = (Date.now() - 2 * 24 * 60 * 60 * 1000) / 1000
+fs.utimesSync(doneFile, doneAt, doneAt)
+
 fs.mkdirSync(path.join(HOME, '.dsh', 'channel-wechat', 'log'), { recursive: true })
 fs.writeFileSync(
   path.join(HOME, '.dsh', 'channel-wechat', 'peer-sessions.json'),
@@ -272,7 +295,7 @@ check(
   ['dsh:session', 'dsh:job', 'dsh:schedule', 'dsh:goal', 'dsh:team-task', 'codex:codex', 'wechat:channel', 'files:file', 'process:process'].every((id) => sectionIds.includes(id)),
   sectionIds.join(','),
 )
-check('stats items counted', state.stats.items === 13, JSON.stringify(state.stats))
+check('stats items counted', state.stats.items === 15, JSON.stringify(state.stats))
 check('stats running counted', state.stats.running === 7, JSON.stringify(state.stats))
 check('stats waiting counted', state.stats.waiting === 1, JSON.stringify(state.stats))
 check('changed-in-5m counted', state.stats.changed === 7, JSON.stringify(state.stats))
@@ -299,6 +322,16 @@ const codexItems = state.sections.find((section) => section.id === 'codex:codex'
 check('codex session listed', codexItems[0]?.title === 'project-x', JSON.stringify(codexItems[0]))
 check('codex running from task_started', codexItems[0]?.status === 'running', JSON.stringify(codexItems[0]?.status))
 check('codex meta counts events', (codexItems[0]?.meta ?? []).some((line) => line.includes('2 events')), JSON.stringify(codexItems[0]?.meta))
+check(
+  'stale task_started is not reported as running',
+  codexItems.find((item) => item.title === 'stale-proj')?.status === 'idle',
+  JSON.stringify(codexItems.find((item) => item.title === 'stale-proj')),
+)
+check(
+  'old completed task is reported as done',
+  codexItems.find((item) => item.title === 'done-proj')?.status === 'done',
+  JSON.stringify(codexItems.find((item) => item.title === 'done-proj')),
+)
 const channelItems = state.sections.find((section) => section.id === 'wechat:channel')?.items ?? []
 check('wechat peer listed', channelItems[0]?.title === 'peer1', JSON.stringify(channelItems[0]))
 check('wechat peer links session', channelItems[0]?.jump?.kind === 'dsh-session' && channelItems[0].jump.sessionId === 'sess-alpha-0001', JSON.stringify(channelItems[0]?.jump))

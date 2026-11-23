@@ -316,7 +316,8 @@ window.__ModuleLoader__.load({
               at: previous.data ? Date.now() : 0,
             }))
           }
-          if (alive) timer = window.setTimeout(load, intervalMs)
+          const hidden = typeof document !== 'undefined' && document.hidden === true
+          if (alive) timer = window.setTimeout(load, hidden ? Math.max(intervalMs, 30000) : intervalMs)
         }
         load()
         return () => {
