@@ -2,7 +2,7 @@
 
 A read-only observatory for your machine: what is running right now, and what just changed.
 
-## What it shows (0.2.0 / P2)
+## What it shows (0.3.0 / P3)
 
 | Section | Source | Per row |
 | --- | --- | --- |
@@ -19,6 +19,7 @@ A read-only observatory for your machine: what is running right now, and what ju
 ## Where it lives
 
 - Sidebar entry **My desk** (「我的工作台」) and its main panel.
+- A frame-wide island at the top of the window: collapsed it shows run / wait / changed counts and refreshes every 10s; click it for the top five items and an **Open desk** button. It hides itself when there is nothing to show, refreshes every 2.5s while open, and closes on Esc or an outside click.
 - One read-only route `GET /dsh-mydesk/state` behind the same connection trust as the app.
 - One action route `POST /dsh-mydesk/open`, used only when you click a row whose target is a local app. It accepts an allowlisted app name or an `http(s)` URL, never a shell string.
 
@@ -32,7 +33,8 @@ A read-only observatory for your machine: what is running right now, and what ju
 ## Layout
 
 - Sources live in `index.js` behind one `Item` contract (see `docs/CONTRACTS.md`); the client renders that contract and nothing else.
-- `test/probe.mjs` runs both halves against fixtures and a fake Cordis context: `node test/probe.mjs`.
+- `test/probe.mjs` runs both halves against fixtures and a fake Cordis context: `node test/probe.mjs` (64 checks).
+- The island is client-only; it reads the same `/state` route with a lower cadence while collapsed.
 
 ## Install
 

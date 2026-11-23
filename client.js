@@ -69,6 +69,13 @@ window.__ModuleLoader__.load({
       openFailed: 'Could not open the target',
       hidden: 'more not shown',
       footer: 'Read-only · refreshes every 2.5s',
+      islandTitle: 'My desk',
+      islandRun: 'run',
+      islandWait: 'wait',
+      islandChanged: 'chg',
+      islandOpen: 'Open desk',
+      islandHint: 'Esc to close',
+      islandEmpty: 'Nothing to show',
     }
 
     const ZH = {
@@ -127,6 +134,13 @@ window.__ModuleLoader__.load({
       openFailed: '打不开目标',
       hidden: '条未显示',
       footer: '只读 · 每 2.5 秒刷新一次',
+      islandTitle: '我的工作台',
+      islandRun: '跑',
+      islandWait: '等',
+      islandChanged: '变',
+      islandOpen: '打开工作台',
+      islandHint: 'Esc 收起',
+      islandEmpty: '暂时没有可显示的',
     }
 
     const CSS = `
@@ -173,7 +187,41 @@ window.__ModuleLoader__.load({
       .md-more{font-size:11.5px;color:var(--dsw-alias-label-secondary);padding:9px 14px;border-top:1px solid var(--dsw-alias-border-l1)}
       .md-foot{font-size:11.5px;color:var(--dsw-alias-label-secondary);padding-top:2px}
       .md-notice{font-size:11.5px;color:var(--dsw-alias-state-error-primary)}
+      .mi-wrap{position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:60;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none}
+      .mi-pill{pointer-events:auto;display:inline-flex;align-items:center;gap:7px;height:30px;padding:0 12px;border-radius:999px;border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-overlay);box-shadow:0 2px 12px rgba(0,0,0,.14);color:var(--dsw-alias-label-primary);font:inherit;font-size:12px;cursor:pointer}
+      .mi-pill:hover{border-color:var(--dsw-alias-border-l2)}
+      .mi-pill:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px}
+      .mi-dot{width:7px;height:7px;border-radius:999px;background:var(--dsw-alias-state-success-primary);flex:none}
+      .mi-dot--error{background:var(--dsw-alias-state-error-primary)}
+      .mi-metric{display:inline-flex;align-items:baseline;gap:2px;font-variant-numeric:tabular-nums;color:var(--dsw-alias-label-primary)}
+      .mi-num{font-weight:650}
+      .mi-sep{width:1px;height:11px;background:var(--dsw-alias-border-l1)}
+      .mi-card{pointer-events:auto;width:min(380px,92vw);border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-overlay);border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.2);overflow:hidden;display:flex;flex-direction:column}
+      .mi-head{display:flex;align-items:baseline;gap:8px;padding:10px 13px 8px}
+      .mi-title{font-size:12.5px;font-weight:600}
+      .mi-total{margin-left:auto;font-size:11px;color:var(--dsw-alias-label-secondary);font-variant-numeric:tabular-nums}
+      .mi-row{display:flex;align-items:center;gap:8px;padding:7px 13px;border:0;border-top:1px solid var(--dsw-alias-border-l1);cursor:pointer;background:transparent;font:inherit;text-align:left;color:inherit;width:100%}
+      .mi-row:hover{background:var(--dsw-alias-bg-layer-2)}
+      .mi-rowtitle{flex:1 1 auto;min-width:0;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+      .mi-rowmeta{flex:none;font-size:10.5px;color:var(--dsw-alias-label-secondary)}
+      .mi-empty{padding:12px 13px;border-top:1px solid var(--dsw-alias-border-l1);font-size:12px;color:var(--dsw-alias-label-secondary)}
+      .mi-foot{display:flex;align-items:center;gap:8px;padding:9px 13px;border-top:1px solid var(--dsw-alias-border-l1)}
+      .mi-open{appearance:none;border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);font:inherit;font-size:11.5px;line-height:1;padding:6px 10px;border-radius:7px;cursor:pointer}
+      .mi-open:hover{background:var(--dsw-alias-bg-layer-2)}
+      .mi-hint{margin-left:auto;font-size:10.5px;color:var(--dsw-alias-label-secondary)}
     `
+
+    const KIND_KEYS = {
+      session: 'kindSession',
+      job: 'kindJob',
+      schedule: 'kindSchedule',
+      goal: 'kindGoal',
+      'team-task': 'kindTeamTask',
+      codex: 'kindCodex',
+      channel: 'kindChannel',
+      file: 'kindFile',
+      process: 'kindProcess',
+    }
 
     const SUCCESS = 'var(--dsw-alias-state-success-primary)'
     const WARN = 'var(--dsw-alias-state-warn-primary)'
@@ -224,7 +272,7 @@ window.__ModuleLoader__.load({
       return `${Math.round(minutes / 60)}h`
     }
 
-    function useDesk() {
+    function useDesk(intervalMs = POLL_MS) {
       const [state, setState] = React.useState({ status: 'loading', data: null, error: null, at: 0 })
       const [tick, setTick] = React.useState(0)
       React.useEffect(() => {
@@ -249,15 +297,45 @@ window.__ModuleLoader__.load({
               at: previous.data ? Date.now() : 0,
             }))
           }
-          if (alive) timer = window.setTimeout(load, POLL_MS)
+          if (alive) timer = window.setTimeout(load, intervalMs)
         }
         load()
         return () => {
           alive = false
           window.clearTimeout(timer)
         }
-      }, [tick])
+      }, [tick, intervalMs])
       return [state, React.useCallback(() => setTick((value) => value + 1), [])]
+    }
+
+    /** One click target for both surfaces. Returns whether the item was actionable. */
+    function activateItem(ctx, item, onFail) {
+      const jump = item && item.jump
+      if (!jump) return false
+      try {
+        if (jump.kind === 'dsh-session') {
+          const ui = ctx && typeof ctx.get === 'function' ? ctx.get('uiWorkspace') : undefined
+          if (ui && typeof ui.openSession === 'function') ui.openSession(jump.sessionId)
+          return true
+        }
+        if (jump.kind === 'app' || jump.kind === 'url') {
+          fetch('/dsh-mydesk/open', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify(jump),
+          })
+            .then((response) => {
+              if (!response.ok && onFail) onFail()
+            })
+            .catch(() => {
+              if (onFail) onFail()
+            })
+          return true
+        }
+      } catch {
+        if (onFail) onFail()
+      }
+      return false
     }
 
     function panelFor(locale) {
@@ -278,27 +356,7 @@ window.__ModuleLoader__.load({
         const sourceError = (sourceId) => sources.find((source) => source.id === sourceId)?.health?.error
 
         const activate = (item) => {
-          const jump = item.jump
-          if (!jump) return
-          try {
-            if (jump.kind === 'dsh-session') {
-              const ui = ctx && typeof ctx.get === 'function' ? ctx.get('uiWorkspace') : undefined
-              if (ui && typeof ui.openSession === 'function') ui.openSession(jump.sessionId)
-              return
-            }
-            if (jump.kind === 'app' || jump.kind === 'url') {
-              fetch('/dsh-mydesk/open', {
-                method: 'POST',
-                headers: { 'content-type': 'application/json' },
-                body: JSON.stringify(jump),
-              }).then((response) => {
-                if (!response.ok) setNotice(t('openFailed'))
-                else setNotice('')
-              })
-            }
-          } catch {
-            setNotice(t('openFailed'))
-          }
+          activateItem(ctx, item, () => setNotice(t('openFailed')))
         }
 
         const rowFor = (item) => {
@@ -356,17 +414,6 @@ window.__ModuleLoader__.load({
           )
         }
 
-        const KIND_KEYS = {
-          session: 'kindSession',
-          job: 'kindJob',
-          schedule: 'kindSchedule',
-          goal: 'kindGoal',
-          'team-task': 'kindTeamTask',
-          codex: 'kindCodex',
-          channel: 'kindChannel',
-          file: 'kindFile',
-          process: 'kindProcess',
-        }
         const sectionTitle = (kind) => t(KIND_KEYS[kind] ?? 'kindItems')
 
         const scopeLabel = (sourceId) => {
@@ -500,6 +547,137 @@ window.__ModuleLoader__.load({
       }
     }
 
+    function islandFor(locale) {
+      return function DeskIsland(props) {
+        const ctx = props && props.ctx
+        const [, bump] = React.useState(0)
+        React.useEffect(() => locale.subscribe(() => bump((value) => value + 1)), [])
+        const [expanded, setExpanded] = React.useState(false)
+        const [state] = useDesk(expanded ? POLL_MS : 10000)
+        const rootRef = React.useRef(null)
+        const t = locale.bind(NS)
+
+        React.useEffect(() => {
+          if (!expanded) return
+          const close = () => setExpanded(false)
+          const onPointer = (event) => {
+            if (rootRef.current && !rootRef.current.contains(event.target)) close()
+          }
+          const onKey = (event) => {
+            if (event.key === 'Escape') close()
+          }
+          document.addEventListener('mousedown', onPointer)
+          document.addEventListener('keydown', onKey)
+          return () => {
+            document.removeEventListener('mousedown', onPointer)
+            document.removeEventListener('keydown', onKey)
+          }
+        }, [expanded])
+
+        const data = state.data
+        const stats = data?.stats ?? {}
+        const sources = Array.isArray(data?.sources) ? data.sources : []
+        const sections = Array.isArray(data?.sections) ? data.sections : []
+        const total = stats.items ?? 0
+        const failing = state.status === 'failed' || sources.some((source) => source.health?.error)
+        if (total === 0 && !failing) return null
+
+        const openDesk = () => {
+          setExpanded(false)
+          try {
+            const layout = ctx && typeof ctx.get === 'function' ? ctx.get('layout') : undefined
+            if (layout && typeof layout.selectPanel === 'function') layout.selectPanel('mydesk')
+          } catch {}
+        }
+
+        const items = []
+        for (const section of sections) for (const item of section.items ?? []) items.push(item)
+        items.sort((a, b) => {
+          const rank = (status) => (status === 'running' ? 0 : status === 'waiting' ? 1 : status === 'changed' ? 2 : 3)
+          if (rank(a.status) !== rank(b.status)) return rank(a.status) - rank(b.status)
+          return (b.changedAt ?? 0) - (a.changedAt ?? 0)
+        })
+        const top = items.slice(0, 5)
+
+        const metrics = []
+        if (stats.running) metrics.push(['run', stats.running])
+        if (stats.waiting) metrics.push(['wait', stats.waiting])
+        if (stats.changed) metrics.push(['changed', stats.changed])
+        if (metrics.length === 0) metrics.push(['total', total])
+
+        const metricLabel = (key) =>
+          key === 'run' ? t('islandRun') : key === 'wait' ? t('islandWait') : key === 'changed' ? t('islandChanged') : ''
+
+        const pill = h(
+          'button',
+          {
+            className: 'mi-pill',
+            type: 'button',
+            'aria-expanded': expanded,
+            title: t('islandTitle'),
+            onClick: () => setExpanded((value) => !value),
+          },
+          h('span', { className: 'mi-dot' + (failing ? ' mi-dot--error' : '') }),
+          metrics.map(([key, value], index) => [
+            index > 0 ? h('span', { className: 'mi-sep', key: 'sep:' + key }) : null,
+            h(
+              'span',
+              { className: 'mi-metric', key: 'metric:' + key },
+              h('span', { className: 'mi-num' }, String(value)),
+              h('span', null, metricLabel(key)),
+            ),
+          ]),
+        )
+
+        const card = expanded
+          ? h(
+              'div',
+              { className: 'mi-card', role: 'region', 'aria-label': t('islandTitle') },
+              h(
+                'div',
+                { className: 'mi-head' },
+                h('span', { className: 'mi-title' }, t('islandTitle')),
+                h('span', { className: 'mi-total' }, String(total)),
+              ),
+              top.length === 0
+                ? h('div', { className: 'mi-empty' }, t('islandEmpty'))
+                : top.map((item) =>
+                    h(
+                      'button',
+                      {
+                        className: 'mi-row',
+                        type: 'button',
+                        key: item.id,
+                        title: item.title,
+                        onClick: () => {
+                          setExpanded(false)
+                          activateItem(ctx, item)
+                        },
+                      },
+                      h('span', { className: 'mi-dot', style: { background: toneOf(item.status) } }),
+                      h('span', { className: 'mi-rowtitle' }, String(item.title ?? '')),
+                      h('span', { className: 'mi-rowmeta' }, t(KIND_KEYS[item.kind] ?? 'kindItems')),
+                    ),
+                  ),
+              h(
+                'div',
+                { className: 'mi-foot' },
+                h('button', { className: 'mi-open', type: 'button', onClick: openDesk }, t('islandOpen')),
+                h('span', { className: 'mi-hint' }, t('islandHint')),
+              ),
+            )
+          : null
+
+        return h(
+          'div',
+          { className: 'mi-wrap', ref: rootRef },
+          h('style', null, CSS),
+          pill,
+          card,
+        )
+      }
+    }
+
     function iconFor() {
       return function DeskIcon(props) {
         const size = typeof props?.size === 'number' ? props.size : 20
@@ -549,6 +727,9 @@ window.__ModuleLoader__.load({
           ctx.slots.register({ name: 'sidebar.panellist', id: 'mydesk', order: 7, label: () => t('title') }, Icon),
         )
         ctx.slots.inject('main', () => ctx.slots.register({ name: 'main', key: 'mydesk' }, Panel))
+        ctx.slots.inject('shell.overlay', () =>
+          ctx.slots.register({ name: 'shell.overlay', id: 'mydesk-island', order: 5 }, wrap(islandFor(ctx.locale))),
+        )
       },
     }
   },

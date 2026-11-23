@@ -350,6 +350,7 @@ console.log('\nClient half')
 const dictionaries = new Map()
 const registrations = []
 const opened = []
+const panels = []
 const fetches = []
 globalThis.fetch = async (url, init) => {
   fetches.push({ url, body: init?.body })
@@ -372,6 +373,9 @@ const ReactStub = {
   useCallback(fn) {
     return fn
   },
+  useRef(initial) {
+    return { current: initial ?? null }
+  },
 }
 
 const slotCtx = {
@@ -384,6 +388,13 @@ const slotCtx = {
       return {
         openSession(target) {
           opened.push(target)
+        },
+      }
+    }
+    if (name === 'layout') {
+      return {
+        selectPanel(panel) {
+          panels.push(panel)
         },
       }
     }
@@ -424,9 +435,11 @@ clientModule.apply(slotCtx)
 
 const panellist = registrations.find((entry) => entry.options.name === 'sidebar.panellist')
 const main = registrations.find((entry) => entry.options.name === 'main')
+const overlay = registrations.find((entry) => entry.options.name === 'shell.overlay')
 check('panellist registration', panellist?.options.id === 'mydesk' && panellist.options.order === 7, JSON.stringify(panellist?.options))
 check('panellist label localizes', panellist?.options.label?.() === '我的工作台', panellist?.options.label?.())
 check('main registration', main?.options.key === 'mydesk', JSON.stringify(main?.options))
+check('island registration', overlay?.options.id === 'mydesk-island' && overlay.options.order === 5, JSON.stringify(overlay?.options))
 
 function text(node, out = []) {
   if (node === null || node === undefined || node === false) return out
@@ -498,6 +511,37 @@ ReactState.queue = [undefined, { status: 'failed', data: null, error: 'HTTP 401'
 const failedElement = main.component({ ctx: slotCtx })
 const failedText = text(failedElement.type(failedElement.props))
 check('failure state renders', failedText.some((line) => line.includes('HTTP 401')))
+
+/* ---------------------------------------------------------------- island */
+
+function renderIsland(data, expanded) {
+  ReactState.queue = [undefined, expanded, { status: 'ready', data, error: null, at: now }, undefined]
+  const element = overlay.component({ ctx: slotCtx })
+  return element.type(element.props)
+}
+
+const islandCollapsed = renderIsland(state, false)
+const collapsedText = text(islandCollapsed)
+check('island renders when there is work', Boolean(islandCollapsed))
+check('island shows run/wait/chg counts', ['7', '1'].every((value) => collapsedText.includes(value)) && collapsedText.includes('跑'), collapsedText.join('|'))
+check('island pill is a button', collect(islandCollapsed, (node) => node.type === 'button').length === 1)
+
+const islandExpanded = renderIsland(state, true)
+const expandedText = text(islandExpanded)
+check('island expands into a card', expandedText.includes('打开工作台') && expandedText.includes('Esc 收起'))
+const islandRows = collect(islandExpanded, (node) => node.props?.className === 'mi-row')
+check('island lists at most five rows', islandRows.length > 0 && islandRows.length <= 5, String(islandRows.length))
+opened.length = 0
+for (const row of islandRows) row.props.onClick()
+check('island rows route like the desk', opened.includes('sess-alpha-0001'), JSON.stringify(opened))
+
+const islandButtons = collect(islandExpanded, (node) => node.type === 'button' && node.props?.className === 'mi-open')
+panels.length = 0
+islandButtons[0]?.props.onClick()
+check('island opens the desk panel', panels.includes('mydesk'), JSON.stringify(panels))
+
+const islandEmpty = renderIsland({ ...emptyState, stats: { ...emptyState.stats } }, false)
+check('island hides itself when empty', islandEmpty === null)
 
 /* ---------------------------------------------------------------- cleanup */
 
