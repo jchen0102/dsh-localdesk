@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 36 36" role="img" aria-label="My desk">
+  <rect x="7" y="9" width="17" height="4.6" rx="2.3" fill="#2563eb"/>
+  <rect x="7" y="16.7" width="22" height="4.6" rx="2.3" fill="#94a3b8"/>
+  <rect x="7" y="24.4" width="13" height="4.6" rx="2.3" fill="#94a3b8"/>
+  <circle cx="28.6" cy="11.3" r="3.1" fill="#22c55e"/>
+</svg>

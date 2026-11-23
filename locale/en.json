@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "My desk",
+    "description": "A read-only workbench that shows every local Session, background job, scheduled task, goal, Team task, and the local apps that are currently running. Open it from the sidebar entry \"My desk\"; rows with a target open that Session or app. It reads the state those services already own — it appends no Session event, changes no task state, and sends nothing off the machine. While the page is open it refreshes every 2.5 seconds; closing the page or disabling the plugin stops those reads. Jumping to a local app is the only side effect, it only happens on a click, and only allowlisted apps are accepted."
+  }
+}
