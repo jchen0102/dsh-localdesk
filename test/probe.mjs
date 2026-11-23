@@ -557,6 +557,13 @@ check('search narrows to matching items', queryText.includes('project-x') && !qu
 check('search keeps the matched section title', queryText.includes('Codex 会话'))
 const runningText = text(render(state, { filter: 'running' }))
 check('running filter hides waiting items', runningText.includes('写 Host 汇总路由') && !runningText.includes('补空状态'))
+const hiddenState = {
+  ...state,
+  sections: state.sections.map((section) => (section.id === 'dsh:session' ? { ...section, hidden: 1 } : section)),
+}
+check('hidden counter shows without a filter', text(render(hiddenState)).includes('+1 条未显示'))
+check('hidden counter is suppressed while filtering', !text(render(hiddenState, { filter: 'running' })).includes('+1'))
+
 const noMatchText = text(render(state, { query: 'zzz-no-such-thing' }))
 check('no-match state renders', noMatchText.includes('没有匹配的条目'))
 

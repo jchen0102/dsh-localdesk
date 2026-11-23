@@ -8,6 +8,10 @@ All notable changes to this package. Format follows [Keep a Changelog](https://k
 
 - `GET /dsh-mydesk/state` carries the Host version, and the desk warns when the Host half is older than the loaded page, telling the user to restart DSH. This covers the case where a client update lands but the Host module is still the previous generation.
 
+### Fixed
+
+- The "+N not shown" line no longer appears while a filter is active; the hidden count refers to rows the filter never evaluated.
+
 ## Unreleased
 
 ### Fixed
