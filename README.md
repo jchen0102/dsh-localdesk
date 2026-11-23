@@ -42,6 +42,13 @@ The desk has a search box (title, path, owner, meta, tags) and status chips (All
 - The island is client-only; it reads the same `/state` route with a lower cadence while collapsed.
 - No screenshots are bundled: this environment has no browser control to capture the real page. The layout follows the shipped DSH management pages and uses only `--dsw-alias-*` theme tokens.
 
+## Compatibility
+
+- Requires Node `^22.19.0 || >=24.0.0` (the DSH app runtime).
+- Hard dependencies: `webServer`, `connection`, `agents`. Without them the plugin does not activate.
+- Optional services: `jobs`, `schedule`, `goals`, `agentTeams`, `subprocess`. A profile that lacks one degrades per source — that source reports `unavailable`/`error`, every other source keeps working (the probe covers exactly this).
+- A source that fails at scan time is isolated: its card shows an error, the rest of the desk still renders.
+
 ## Install
 
 ```bash
