@@ -7,9 +7,40 @@
  *
  *   node test/probe.mjs
  */
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 
 const ROOT = new URL('..', import.meta.url).pathname
+
+/* A fake home so the filesystem sources are deterministic and touch no real data. */
+const HOME = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-mydesk-probe-'))
+process.env.DSH_MYDESK_HOME = HOME
+const codexDir = path.join(HOME, '.codex', 'sessions', '2026', '11', '23')
+fs.mkdirSync(codexDir, { recursive: true })
+fs.writeFileSync(
+  path.join(codexDir, 'rollout-x.jsonl'),
+  [
+    JSON.stringify({
+      type: 'session_meta',
+      ordinal: 1,
+      timestamp: new Date(Date.now() - 4000).toISOString(),
+      payload: { session_id: 'codex-1', cwd: '/tmp/project-x', cli_version: '0.9.0', model_provider: 'openai', source: 'cli' },
+    }),
+    JSON.stringify({ type: 'event_msg', ordinal: 2, timestamp: new Date(Date.now() - 3000).toISOString(), payload: { type: 'task_started' } }),
+  ].join('\n') + '\n',
+)
+fs.mkdirSync(path.join(HOME, '.dsh', 'channel-wechat', 'log'), { recursive: true })
+fs.writeFileSync(
+  path.join(HOME, '.dsh', 'channel-wechat', 'peer-sessions.json'),
+  JSON.stringify({ peers: { 'peer1@im.wechat': 'sess-alpha-0001' }, cwds: {} }),
+)
+fs.writeFileSync(path.join(HOME, '.dsh', 'channel-wechat', 'log', 'channel.log'), '[channel-wechat] polling\n')
+fs.mkdirSync(path.join(HOME, '.claude', 'sessions'), { recursive: true })
+fs.writeFileSync(path.join(HOME, '.claude', 'sessions', 'a.jsonl'), '{}\n')
+fs.mkdirSync(path.join(HOME, '.cursor', 'projects', 'p1'), { recursive: true })
+fs.writeFileSync(path.join(HOME, '.cursor', 'projects', 'p1', 'state.json'), '{}\n')
 const failures = []
 function check(name, condition, detail) {
   if (condition) {
@@ -237,15 +268,15 @@ check('state is json', stateRes.headers['content-type']?.includes('application/j
 const state = JSON.parse(stateRes.body)
 const sectionIds = state.sections.map((section) => section.id)
 check(
-  'all six sections present',
-  ['dsh:session', 'dsh:job', 'dsh:schedule', 'dsh:goal', 'dsh:team-task', 'process:process'].every((id) => sectionIds.includes(id)),
+  'all nine sections present',
+  ['dsh:session', 'dsh:job', 'dsh:schedule', 'dsh:goal', 'dsh:team-task', 'codex:codex', 'wechat:channel', 'files:file', 'process:process'].every((id) => sectionIds.includes(id)),
   sectionIds.join(','),
 )
-check('stats items counted', state.stats.items === 9, JSON.stringify(state.stats))
-check('stats running counted', state.stats.running === 6, JSON.stringify(state.stats))
+check('stats items counted', state.stats.items === 13, JSON.stringify(state.stats))
+check('stats running counted', state.stats.running === 7, JSON.stringify(state.stats))
 check('stats waiting counted', state.stats.waiting === 1, JSON.stringify(state.stats))
-check('changed-in-5m counted', state.stats.changed === 3, JSON.stringify(state.stats))
-check('both sources healthy', state.stats.sourcesOk === 2, JSON.stringify(state.stats))
+check('changed-in-5m counted', state.stats.changed === 7, JSON.stringify(state.stats))
+check('all five sources healthy', state.stats.sourcesOk === 5, JSON.stringify(state.stats))
 const sessionItems = state.sections.find((section) => section.id === 'dsh:session')?.items ?? []
 check(
   'session item carries jump',
@@ -263,6 +294,18 @@ check('process item for allowlisted app', processItems.some((item) => item.title
 check('process item carries app jump', processItems[0]?.jump?.kind === 'app', JSON.stringify(processItems[0]?.jump))
 check('process item has no changedAt', processItems.every((item) => item.changedAt === undefined))
 check('pgrep argv is fixed', host.subprocess.spawned.length >= 1 && host.subprocess.spawned[0].includes('-f'), JSON.stringify(host.subprocess.spawned[0]))
+
+const codexItems = state.sections.find((section) => section.id === 'codex:codex')?.items ?? []
+check('codex session listed', codexItems[0]?.title === 'project-x', JSON.stringify(codexItems[0]))
+check('codex running from task_started', codexItems[0]?.status === 'running', JSON.stringify(codexItems[0]?.status))
+check('codex meta counts events', (codexItems[0]?.meta ?? []).some((line) => line.includes('2 events')), JSON.stringify(codexItems[0]?.meta))
+const channelItems = state.sections.find((section) => section.id === 'wechat:channel')?.items ?? []
+check('wechat peer listed', channelItems[0]?.title === 'peer1', JSON.stringify(channelItems[0]))
+check('wechat peer links session', channelItems[0]?.jump?.kind === 'dsh-session' && channelItems[0].jump.sessionId === 'sess-alpha-0001', JSON.stringify(channelItems[0]?.jump))
+const fileItems = state.sections.find((section) => section.id === 'files:file')?.items ?? []
+check('file targets found', fileItems.length === 2, JSON.stringify(fileItems.map((item) => item.title)))
+check('file targets report changed', fileItems.every((item) => item.status === 'changed'), JSON.stringify(fileItems.map((item) => item.status)))
+check('file targets are not clickable', fileItems.every((item) => item.jump === undefined))
 
 const isolated = makeHostContext({ subprocess: { fail: true } })
 applyHost(isolated.ctx)
@@ -419,7 +462,10 @@ function render(data) {
 
 const rendered = text(render(state))
 check('panel renders title', rendered.includes('我的工作台'), rendered.slice(0, 3).join('|'))
-check('section titles localized', ['会话', '后台作业', '定时任务', '目标', '团队任务', '本机应用'].every((label) => rendered.includes(label)))
+check(
+  'section titles localized',
+  ['会话', '后台作业', '定时任务', '目标', '团队任务', 'Codex 会话', '微信渠道', '应用数据变动', '本机应用'].every((label) => rendered.includes(label)),
+)
 check('stats localized', rendered.includes('5 分钟变动') && rendered.includes('源'))
 check('row content rendered', rendered.some((line) => line.includes('pnpm -r test')))
 check('source scope label rendered', rendered.includes('本进程') && rendered.includes('本机'))
@@ -452,6 +498,10 @@ ReactState.queue = [undefined, { status: 'failed', data: null, error: 'HTTP 401'
 const failedElement = main.component({ ctx: slotCtx })
 const failedText = text(failedElement.type(failedElement.props))
 check('failure state renders', failedText.some((line) => line.includes('HTTP 401')))
+
+/* ---------------------------------------------------------------- cleanup */
+
+fs.rmSync(HOME, { recursive: true, force: true })
 
 /* ---------------------------------------------------------------- report */
 

@@ -18,6 +18,10 @@
  *  - Each source is scanned independently with its own timeout and health so one
  *    failing source cannot blank the desk.
  */
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
+
 export const name = 'dsh-mydesk'
 
 export const inject = ['webServer', 'connection', 'agents']
@@ -39,7 +43,34 @@ const SECTION_ORDER = [
   ['dsh', 'schedule'],
   ['dsh', 'goal'],
   ['dsh', 'team-task'],
+  ['codex', 'codex'],
+  ['wechat', 'channel'],
+  ['files', 'file'],
   ['process', 'process'],
+]
+
+/**
+ * Home base for every filesystem source. `DSH_MYDESK_HOME` exists so the contract
+ * probe can point all sources at a fixture tree instead of the developer's machine.
+ */
+const HOME = process.env.DSH_MYDESK_HOME || os.homedir()
+const CODEX_ROOT = path.join(HOME, '.codex', 'sessions')
+const CHANNEL_ROOT = path.join(HOME, '.dsh', 'channel-wechat')
+const CODEX_FILES = 12
+const CODEX_TAIL_BYTES = 65536
+const CODEX_HEAD_BYTES = 262144
+
+/** file → parsed session facts; re-parsed only when the file grows. */
+const codexCache = new Map()
+const FILE_TARGETS = [
+  { id: 'claude', label: 'Claude Code', root: path.join(HOME, '.claude'), children: ['sessions', 'projects'] },
+  { id: 'cursor', label: 'Cursor', root: path.join(HOME, '.cursor'), children: ['projects', 'agents'] },
+  {
+    id: 'kim',
+    label: 'Kim',
+    root: path.join(HOME, 'Library', 'Application Support', 'Kim (Kim)'),
+    children: ['IndexedDB', 'Local Storage'],
+  },
 ]
 
 /** Local apps the process source may look at, and the `/open` allowlist. */
@@ -414,6 +445,223 @@ async function scanProcess(ctx, now, signal) {
   return items
 }
 
+/* --------------------------------------------------------------- codex source */
+
+/** Bounded recursive walk returning the newest files carrying a suffix. */
+function newestFiles(root, suffix, limit) {
+  const found = []
+  let dirs = 0
+  const walk = (dir, depth) => {
+    if (depth > 6 || dirs > 400) return
+    dirs += 1
+    let entries
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true })
+    } catch {
+      return
+    }
+    for (const entry of entries) {
+      const full = path.join(dir, entry.name)
+      if (entry.isDirectory()) {
+        walk(full, depth + 1)
+        continue
+      }
+      if (!entry.name.endsWith(suffix)) continue
+      try {
+        const stat = fs.statSync(full)
+        found.push({ file: full, mtime: stat.mtimeMs, size: stat.size })
+      } catch {}
+    }
+  }
+  walk(root, 0)
+  found.sort((a, b) => b.mtime - a.mtime)
+  return found.slice(0, limit)
+}
+
+function readSlice(file, start, length) {
+  const fd = fs.openSync(file, 'r')
+  try {
+    const buffer = Buffer.alloc(length)
+    const read = fs.readSync(fd, buffer, 0, length, start)
+    return buffer.subarray(0, read).toString('utf8')
+  } finally {
+    fs.closeSync(fd)
+  }
+}
+
+function firstJsonLine(text) {
+  const end = text.indexOf('\n')
+  const line = end === -1 ? text : text.slice(0, end)
+  try {
+    return JSON.parse(line)
+  } catch {
+    return undefined
+  }
+}
+
+const CODEX_MARKERS = new Set(['task_started', 'task_complete', 'turn_aborted'])
+
+/** Last record and last task marker inside one rollout file, read from its tail. */
+function readCodexTail(file, size) {
+  const start = Math.max(0, size - CODEX_TAIL_BYTES)
+  const text = readSlice(file, start, size - start)
+  const lines = text.split('\n').filter((line) => line.trim().length > 0)
+  let last
+  let marker
+  for (let index = lines.length - 1; index >= 0 && (!last || !marker); index -= 1) {
+    let record
+    try {
+      record = JSON.parse(lines[index])
+    } catch {
+      continue
+    }
+    if (!last) last = record
+    const payloadType = record?.payload?.type
+    if (!marker && record?.type === 'event_msg' && CODEX_MARKERS.has(payloadType)) marker = payloadType
+  }
+  return { last, marker }
+}
+
+function codexFacts(entry) {
+  const cached = codexCache.get(entry.file)
+  if (cached && cached.size === entry.size && cached.mtime === entry.mtime) return cached
+
+  let sessionMeta
+  try {
+    const head = readSlice(entry.file, 0, Math.min(entry.size, CODEX_HEAD_BYTES))
+    const record = firstJsonLine(head)
+    if (record?.type === 'session_meta' && record.payload) sessionMeta = record.payload
+  } catch {}
+  const { last, marker } = readCodexTail(entry.file, entry.size)
+  const stamp = Date.parse(last?.timestamp ?? '')
+  const facts = {
+    size: entry.size,
+    mtime: entry.mtime,
+    sessionId: String(sessionMeta?.session_id ?? sessionMeta?.id ?? path.basename(entry.file, '.jsonl')),
+    cwd: typeof sessionMeta?.cwd === 'string' ? sessionMeta.cwd : undefined,
+    cliVersion: typeof sessionMeta?.cli_version === 'string' ? sessionMeta.cli_version : undefined,
+    provider: typeof sessionMeta?.model_provider === 'string' ? sessionMeta.model_provider : undefined,
+    origin: typeof sessionMeta?.source === 'string' ? sessionMeta.source : undefined,
+    ordinal: typeof last?.ordinal === 'number' ? last.ordinal : undefined,
+    changedAt: Number.isFinite(stamp) ? stamp : entry.mtime,
+    marker,
+  }
+  codexCache.set(entry.file, facts)
+  if (codexCache.size > 200) codexCache.clear()
+  return facts
+}
+
+function scanCodex(now) {
+  if (!fs.existsSync(CODEX_ROOT)) return []
+  const items = []
+  for (const entry of newestFiles(CODEX_ROOT, '.jsonl', CODEX_FILES)) {
+    const facts = codexFacts(entry)
+    const running = facts.marker === 'task_started' && now - entry.mtime < 60 * 60 * 1000
+    const status = running ? 'running' : now - facts.changedAt < 24 * 60 * 60 * 1000 ? 'idle' : 'done'
+    items.push({
+      kind: 'codex',
+      key: facts.sessionId,
+      title: baseName(facts.cwd) ?? shortId(facts.sessionId),
+      subtitle: facts.cwd,
+      status,
+      meta: cleanMeta([
+        typeof facts.ordinal === 'number' ? `${facts.ordinal} events` : '',
+        facts.cliVersion ? `cli ${facts.cliVersion}` : '',
+        facts.provider ?? '',
+      ]),
+      changedAt: facts.changedAt,
+      tags: facts.origin ? [facts.origin] : [],
+    })
+  }
+  return items
+}
+
+/* -------------------------------------------------------------- wechat source */
+
+function readJsonFile(file) {
+  try {
+    return JSON.parse(fs.readFileSync(file, 'utf8'))
+  } catch {
+    return undefined
+  }
+}
+
+function channelLastActive() {
+  let newest = 0
+  try {
+    for (const name of fs.readdirSync(path.join(CHANNEL_ROOT, 'log'))) {
+      try {
+        const stat = fs.statSync(path.join(CHANNEL_ROOT, 'log', name))
+        if (stat.mtimeMs > newest) newest = stat.mtimeMs
+      } catch {}
+    }
+  } catch {}
+  return newest
+}
+
+/**
+ * DSH's own WeChat channel keeps `peer-sessions.json`; reading that mapping is the
+ * supported way to see the channel without touching WeChat's encrypted store.
+ */
+function scanWechat(now) {
+  if (!fs.existsSync(CHANNEL_ROOT)) return []
+  const mapping = readJsonFile(path.join(CHANNEL_ROOT, 'peer-sessions.json'))
+  const peers = mapping && typeof mapping.peers === 'object' && mapping.peers !== null ? mapping.peers : {}
+  const channelAt = channelLastActive()
+  const active = channelAt > 0 && now - channelAt < 10 * 60 * 1000
+  return Object.entries(peers).map(([peer, sessionId]) => ({
+    kind: 'channel',
+    key: peer,
+    title: clip(String(peer).replace(/@.*$/, ''), 60),
+    subtitle: 'WeChat',
+    status: active ? 'changed' : 'idle',
+    meta: cleanMeta([`session ${shortId(sessionId)}`]),
+    changedAt: channelAt || undefined,
+    jump: { kind: 'dsh-session', sessionId: String(sessionId) },
+  }))
+}
+
+/* --------------------------------------------------------------- files source */
+
+function displayPath(full) {
+  return full.startsWith(HOME) ? '~' + full.slice(HOME.length) : full
+}
+
+/** Long-tail fallback: report the newest change under a few known app data dirs. */
+function scanFiles(now) {
+  const items = []
+  for (const target of FILE_TARGETS) {
+    if (!fs.existsSync(target.root)) continue
+    let newest = { at: 0, name: '' }
+    for (const child of target.children) {
+      const dir = path.join(target.root, child)
+      let entries = []
+      try {
+        entries = fs.readdirSync(dir, { withFileTypes: true }).slice(0, 200)
+      } catch {
+        continue
+      }
+      for (const entry of entries) {
+        try {
+          const stat = fs.statSync(path.join(dir, entry.name))
+          if (stat.mtimeMs > newest.at) newest = { at: stat.mtimeMs, name: `${child}/${entry.name}` }
+        } catch {}
+      }
+    }
+    if (newest.at === 0) continue
+    items.push({
+      kind: 'file',
+      key: target.id,
+      title: target.label,
+      subtitle: displayPath(target.root),
+      status: now - newest.at < 10 * 60 * 1000 ? 'changed' : 'idle',
+      meta: cleanMeta([newest.name]),
+      changedAt: newest.at,
+    })
+  }
+  return items
+}
+
 /* ------------------------------------------------------------------- registry */
 
 function sourceList(ctx) {
@@ -435,6 +683,44 @@ function sourceList(ctx) {
           : { available: false, confidence: 'low', evidence: `missing: ${missing.join(', ')}` }
       },
       scan: (now) => scanDsh(ctx, now),
+    },
+    {
+      id: 'codex',
+      kind: 'harness',
+      scope: 'machine',
+      titleKey: 'sourceCodex',
+      depth: 'L1',
+      probe: () =>
+        fs.existsSync(CODEX_ROOT)
+          ? { available: true, confidence: 'high', evidence: displayPath(CODEX_ROOT) }
+          : { available: false, confidence: 'low', evidence: 'no ~/.codex/sessions' },
+      scan: (now) => scanCodex(now),
+    },
+    {
+      id: 'wechat',
+      kind: 'comms',
+      scope: 'process',
+      titleKey: 'sourceWechat',
+      depth: 'L0',
+      probe: () =>
+        fs.existsSync(CHANNEL_ROOT)
+          ? { available: true, confidence: 'high', evidence: displayPath(CHANNEL_ROOT) }
+          : { available: false, confidence: 'low', evidence: 'no ~/.dsh/channel-wechat' },
+      scan: (now) => scanWechat(now),
+    },
+    {
+      id: 'files',
+      kind: 'watch',
+      scope: 'machine',
+      titleKey: 'sourceFiles',
+      depth: 'L0',
+      probe: () => {
+        const roots = FILE_TARGETS.filter((target) => fs.existsSync(target.root))
+        return roots.length > 0
+          ? { available: true, confidence: 'medium', evidence: roots.map((target) => target.id).join(', ') }
+          : { available: false, confidence: 'low', evidence: 'no known app data dirs' }
+      },
+      scan: (now) => scanFiles(now),
     },
     {
       id: 'process',

@@ -34,8 +34,16 @@ window.__ModuleLoader__.load({
       kindGoal: 'Goals',
       kindTeamTask: 'Team tasks',
       kindProcess: 'Local apps',
+      kindCodex: 'Codex sessions',
+      kindChannel: 'WeChat channel',
+      kindFile: 'App data changes',
+      kindItems: 'Items',
+      statusChanged: 'changed',
       sourceDsh: 'DSH',
       sourceProcess: 'Processes',
+      sourceCodex: 'Codex',
+      sourceWechat: 'WeChat',
+      sourceFiles: 'App data',
       scopeProcess: 'this process',
       scopeMachine: 'this machine',
       statusRunning: 'running',
@@ -84,8 +92,16 @@ window.__ModuleLoader__.load({
       kindGoal: '目标',
       kindTeamTask: '团队任务',
       kindProcess: '本机应用',
+      kindCodex: 'Codex 会话',
+      kindChannel: '微信渠道',
+      kindFile: '应用数据变动',
+      kindItems: '条目',
+      statusChanged: '有变动',
       sourceDsh: 'DSH',
       sourceProcess: '进程',
+      sourceCodex: 'Codex',
+      sourceWechat: '微信',
+      sourceFiles: '应用数据',
       scopeProcess: '本进程',
       scopeMachine: '本机',
       statusRunning: '运行中',
@@ -168,7 +184,7 @@ window.__ModuleLoader__.load({
     function toneOf(status) {
       if (status === 'running') return SUCCESS
       if (status === 'waiting') return WARN
-      if (status === 'scheduled') return BRAND
+      if (status === 'scheduled' || status === 'changed') return BRAND
       if (status === 'failed') return ERROR
       return IDLE
     }
@@ -340,21 +356,18 @@ window.__ModuleLoader__.load({
           )
         }
 
-        const sectionTitle = (kind) => {
-          const key =
-            kind === 'session'
-              ? 'kindSession'
-              : kind === 'job'
-                ? 'kindJob'
-                : kind === 'schedule'
-                  ? 'kindSchedule'
-                  : kind === 'goal'
-                    ? 'kindGoal'
-                    : kind === 'team-task'
-                      ? 'kindTeamTask'
-                      : 'kindProcess'
-          return t(key)
+        const KIND_KEYS = {
+          session: 'kindSession',
+          job: 'kindJob',
+          schedule: 'kindSchedule',
+          goal: 'kindGoal',
+          'team-task': 'kindTeamTask',
+          codex: 'kindCodex',
+          channel: 'kindChannel',
+          file: 'kindFile',
+          process: 'kindProcess',
         }
+        const sectionTitle = (kind) => t(KIND_KEYS[kind] ?? 'kindItems')
 
         const scopeLabel = (sourceId) => {
           const source = sources.find((entry) => entry.id === sourceId)

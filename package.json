@@ -1,9 +1,9 @@
 {
   "name": "dsh-mydesk",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": false,
   "type": "module",
-  "description": "A local change observatory for DSH: every Session, job, schedule, goal, Team task, and local app in one read-only desk.",
+  "description": "A local change observatory for DSH: Sessions, jobs, schedules, goals, Team tasks, Codex sessions, the WeChat channel, app data changes and running local apps in one read-only desk.",
   "exports": {
     ".": "./index.js",
     "./client": "./client.js",
