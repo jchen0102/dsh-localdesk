@@ -77,6 +77,8 @@ window.__ModuleLoader__.load({
       islandOpen: 'Open desk',
       islandHint: 'Esc to close',
       islandEmpty: 'Nothing to show',
+      islandStaleFlag: 'stale Host',
+      islandSourceFlag: 'source error',
       searchPlaceholder: 'Filter by title, path, or owner',
       filterAll: 'All',
       filterRunning: 'Running',
@@ -150,6 +152,8 @@ window.__ModuleLoader__.load({
       islandOpen: '打开工作台',
       islandHint: 'Esc 收起',
       islandEmpty: '暂时没有可显示的',
+      islandStaleFlag: 'Host 旧',
+      islandSourceFlag: '源异常',
       searchPlaceholder: '按标题、路径或归属筛选',
       filterAll: '全部',
       filterRunning: '在跑',
@@ -217,6 +221,9 @@ window.__ModuleLoader__.load({
       .mi-pill:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px}
       .mi-dot{width:7px;height:7px;border-radius:999px;background:var(--dsw-alias-state-success-primary);flex:none}
       .mi-dot--error{background:var(--dsw-alias-state-error-primary)}
+      .mi-dot--warn{background:var(--dsw-alias-state-warning-primary,#d97706)}
+      .mi-flag{font-size:10px;line-height:1;padding:2px 6px;border-radius:999px;border:1px solid var(--dsw-alias-border-l1);color:var(--dsw-alias-label-secondary);white-space:nowrap}
+      .mi-flag--error{color:var(--dsw-alias-state-error-primary);border-color:var(--dsw-alias-state-error-primary)}
       .mi-metric{display:inline-flex;align-items:baseline;gap:2px;font-variant-numeric:tabular-nums;color:var(--dsw-alias-label-primary)}
       .mi-num{font-weight:650}
       .mi-sep{width:1px;height:11px;background:var(--dsw-alias-border-l1)}
@@ -678,8 +685,21 @@ window.__ModuleLoader__.load({
         const total = stats.items ?? 0
         const staleHost =
           typeof data?.version === 'string' && data.version.length > 0 && data.version !== VERSION
-        const failing = state.status === 'failed' || staleHost || sources.some((source) => source.health?.error)
+        const failedSource = sources.find((source) => source.health?.error)
+        const failed = state.status === 'failed' || Boolean(failedSource)
+        const failing = failed || staleHost
         if (total === 0 && !failing) return null
+
+        const flag = staleHost
+          ? t('islandStaleFlag')
+          : failedSource
+            ? `${t('islandSourceFlag')} · ${failedSource.id}`
+            : failed
+              ? t('islandSourceFlag')
+              : ''
+        const pillTitle = staleHost
+          ? `${t('hostStale')} · v${data?.version ?? '?'} → v${VERSION}`
+          : flag || t('islandTitle')
 
         const openDesk = () => {
           setExpanded(false)
@@ -719,10 +739,10 @@ window.__ModuleLoader__.load({
             className: 'mi-pill',
             type: 'button',
             'aria-expanded': expanded,
-            title: t('islandTitle'),
+            title: pillTitle,
             onClick: () => setExpanded((value) => !value),
           },
-          h('span', { className: 'mi-dot' + (failing ? ' mi-dot--error' : '') }),
+          h('span', { className: 'mi-dot' + (failed ? ' mi-dot--error' : staleHost ? ' mi-dot--warn' : '') }),
           metrics.map(([key, value], index) => [
             index > 0 ? h('span', { className: 'mi-sep', key: 'sep:' + key }) : null,
             h(
@@ -732,6 +752,9 @@ window.__ModuleLoader__.load({
               h('span', null, metricLabel(key)),
             ),
           ]),
+          flag
+            ? h('span', { className: 'mi-flag' + (failed ? ' mi-flag--error' : ''), key: 'flag' }, flag)
+            : null,
         )
 
         const card = expanded

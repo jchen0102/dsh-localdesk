@@ -615,6 +615,11 @@ check('island opens the desk panel', panels.includes('localdesk'), JSON.stringif
 const islandEmpty = renderIsland({ ...emptyState, stats: { ...emptyState.stats } }, false)
 check('island hides itself when empty', islandEmpty === null)
 
+const staleIsland = text(renderIsland({ ...state, version: '0.0.9' }, false))
+check('island names a stale Host instead of a bare dot', staleIsland.some((line) => line.includes('Host 旧')), staleIsland.join('|'))
+const staleDots = collect(renderIsland({ ...state, version: '0.0.9' }, false), (node) => String(node.props?.className ?? '').includes('mi-dot--warn'))
+check('stale Host uses the warning dot', staleDots.length === 1, String(staleDots.length))
+
 /* ---------------------------------------------------------------- cleanup */
 
 fs.rmSync(HOME, { recursive: true, force: true })
