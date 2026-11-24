@@ -616,7 +616,7 @@ const islandEmpty = renderIsland({ ...emptyState, stats: { ...emptyState.stats }
 check('island hides itself when empty', islandEmpty === null)
 
 const staleIsland = text(renderIsland({ ...state, version: '0.0.9' }, false))
-check('island names a stale Host instead of a bare dot', staleIsland.some((line) => line.includes('Host 旧')), staleIsland.join('|'))
+check('island names a stale Host instead of a bare dot', staleIsland.some((line) => line.includes('重启生效')), staleIsland.join('|'))
 const staleDots = collect(renderIsland({ ...state, version: '0.0.9' }, false), (node) => String(node.props?.className ?? '').includes('mi-dot--warn'))
 check('stale Host uses the warning dot', staleDots.length === 1, String(staleDots.length))
 
