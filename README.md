@@ -2,6 +2,8 @@
 
 A read-only observatory for your machine: what is running right now, and what just changed.
 
+![My desk: header, summary and the island](assets/hero.png)
+
 ## What it shows (0.4.1 / P4)
 
 | Section | Source | Per row |
@@ -40,7 +42,7 @@ The desk has a search box (title, path, owner, meta, tags) and status chips (All
 - Sources live in `index.js` behind one `Item` contract (see `docs/CONTRACTS.md`); the client renders that contract and nothing else.
 - `test/probe.mjs` runs both halves against fixtures and a fake Cordis context: `node test/probe.mjs` (64 checks).
 - The island is client-only; it reads the same `/state` route with a lower cadence while collapsed.
-- No screenshots are bundled: this environment has no browser control to capture the real page. The layout follows the shipped DSH management pages and uses only `--dsw-alias-*` theme tokens.
+- The screenshot above is a real window capture; it is cropped to the header area so no local paths, workspace names, or session content appear in it.
 
 ## Compatibility
 
