@@ -52,9 +52,14 @@ The desk has a search box (title, path, owner, meta, tags) and status chips (All
 
 ## Install
 
+Published as **`dsh-localdesk`** on npm:
+
 ```bash
-# Plugins > Add plugin, pick this directory — or install the local package.
+# In DSH: Plugins > Add plugin, then install the published package,
+# or install this directory for local development.
 ```
+
+Ignore the `0.0.0-stage` placeholder version that npm creates for a brand-new package name; `latest` points at the real release.
 
 ## License
 
