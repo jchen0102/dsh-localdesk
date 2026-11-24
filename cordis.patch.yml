@@ -1,6 +1,6 @@
-# dsh-mydesk bundle layer: one Host row that aggregates the local sources this
+# dsh-localdesk bundle layer: one Host row that aggregates the local sources this
 # profile already runs and serves them over a read-only route plus an allowlisted
 # open route. The browser half is declared by package.json's `dsh.client`.
 - insert:
-    - id: dsh-mydesk
-      name: dsh-mydesk
+    - id: dsh-localdesk
+      name: dsh-localdesk

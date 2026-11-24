@@ -1,4 +1,4 @@
-# dsh-mydesk
+# dsh-localdesk
 
 A read-only observatory for your machine: what is running right now, and what just changed.
 
@@ -20,8 +20,8 @@ A read-only observatory for your machine: what is running right now, and what ju
 
 - Sidebar entry **My desk** (「我的工作台」) and its main panel.
 - A frame-wide island at the top of the window: collapsed it shows run / wait / changed counts and refreshes every 10s; click it for the top five items and an **Open desk** button. It hides itself when there is nothing to show, refreshes every 2.5s while open, and closes on Esc or an outside click.
-- One read-only route `GET /dsh-mydesk/state` behind the same connection trust as the app.
-- One action route `POST /dsh-mydesk/open`, used only when you click a row whose target is a local app. It accepts an allowlisted app name or an `http(s)` URL, never a shell string.
+- One read-only route `GET /dsh-localdesk/state` behind the same connection trust as the app.
+- One action route `POST /dsh-localdesk/open`, used only when you click a row whose target is a local app. It accepts an allowlisted app name or an `http(s)` URL, never a shell string.
 
 ## Filtering
 

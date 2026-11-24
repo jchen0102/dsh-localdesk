@@ -1,17 +1,17 @@
 /**
- * dsh-mydesk — Client half.
+ * dsh-localdesk — Client half.
  *
- * One page fed by `/dsh-mydesk/state`. The Host owns grouping, ordering and
+ * One page fed by `/dsh-localdesk/state`. The Host owns grouping, ordering and
  * statuses; this file only localizes and renders, and routes clicks to either
- * `uiWorkspace.openSession` (DSH) or the allowlisted `/dsh-mydesk/open`.
+ * `uiWorkspace.openSession` (DSH) or the allowlisted `/dsh-localdesk/open`.
  */
 window.__ModuleLoader__.load({
-  id: 'dsh-mydesk',
+  id: 'dsh-localdesk',
   factory(require) {
     const React = require('react')
     const h = React.createElement
-    const NS = 'dsh-mydesk'
-    const VERSION = '0.4.1'
+    const NS = 'dsh-localdesk'
+    const VERSION = '0.4.2'
     const POLL_MS = 2500
 
     const EN = {
@@ -304,7 +304,7 @@ window.__ModuleLoader__.load({
         let timer = 0
         const load = async () => {
           try {
-            const response = await fetch('/dsh-mydesk/state', {
+            const response = await fetch('/dsh-localdesk/state', {
               headers: { accept: 'application/json' },
               cache: 'no-store',
             })
@@ -344,7 +344,7 @@ window.__ModuleLoader__.load({
           return true
         }
         if (jump.kind === 'app' || jump.kind === 'url') {
-          fetch('/dsh-mydesk/open', {
+          fetch('/dsh-localdesk/open', {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
             body: JSON.stringify(jump),
@@ -685,7 +685,7 @@ window.__ModuleLoader__.load({
           setExpanded(false)
           try {
             const layout = ctx && typeof ctx.get === 'function' ? ctx.get('layout') : undefined
-            if (layout && typeof layout.selectPanel === 'function') layout.selectPanel('mydesk')
+            if (layout && typeof layout.selectPanel === 'function') layout.selectPanel('localdesk')
           } catch {}
         }
 
@@ -820,7 +820,7 @@ window.__ModuleLoader__.load({
         for (const definition of locales) {
           ctx.effect(
             () => ctx.locale.register(NS, definition.id, dictionaryFor(definition.id)),
-            'dsh-mydesk: locale ' + definition.id,
+            'dsh-localdesk: locale ' + definition.id,
           )
         }
         const t = ctx.locale.bind(NS)
@@ -829,11 +829,11 @@ window.__ModuleLoader__.load({
         const Icon = iconFor()
 
         ctx.slots.inject('sidebar.panellist', () =>
-          ctx.slots.register({ name: 'sidebar.panellist', id: 'mydesk', order: 7, label: () => t('title') }, Icon),
+          ctx.slots.register({ name: 'sidebar.panellist', id: 'localdesk', order: 7, label: () => t('title') }, Icon),
         )
-        ctx.slots.inject('main', () => ctx.slots.register({ name: 'main', key: 'mydesk' }, Panel))
+        ctx.slots.inject('main', () => ctx.slots.register({ name: 'main', key: 'localdesk' }, Panel))
         ctx.slots.inject('shell.overlay', () =>
-          ctx.slots.register({ name: 'shell.overlay', id: 'mydesk-island', order: 5 }, wrap(islandFor(ctx.locale))),
+          ctx.slots.register({ name: 'shell.overlay', id: 'localdesk-island', order: 5 }, wrap(islandFor(ctx.locale))),
         )
       },
     }

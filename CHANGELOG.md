@@ -12,6 +12,12 @@ All notable changes to this package. Format follows [Keep a Changelog](https://k
 
 - The "+N not shown" line no longer appears while a filter is active; the hidden count refers to rows the filter never evaluated.
 
+## 0.4.2 - 2026-11-24
+
+### Changed
+
+- Renamed the package from `dsh-mydesk` to `dsh-localdesk`: the old name was published to npm by another author before this package could claim it. Routes moved to `/dsh-localdesk/*`, slot ids to `localdesk` / `localdesk-island`, and the test seam to `DSH_LOCALDESK_HOME`. Display name ("My desk" / 「我的工作台」) is unchanged.
+
 ## Unreleased
 
 ### Fixed

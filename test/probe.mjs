@@ -1,5 +1,5 @@
 /**
- * Contract probe for dsh-mydesk (dev-only; not shipped in the npm package).
+ * Contract probe for dsh-localdesk (dev-only; not shipped in the npm package).
  *
  * Runs the real Host half against a fake Cordis context and the real Client half
  * against fake React/locale/slot services, then clicks through the rendered rows.
@@ -15,8 +15,8 @@ import { pathToFileURL } from 'node:url'
 const ROOT = new URL('..', import.meta.url).pathname
 
 /* A fake home so the filesystem sources are deterministic and touch no real data. */
-const HOME = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-mydesk-probe-'))
-process.env.DSH_MYDESK_HOME = HOME
+const HOME = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-localdesk-probe-'))
+process.env.DSH_LOCALDESK_HOME = HOME
 const codexDir = path.join(HOME, '.codex', 'sessions', '2026', '11', '23')
 fs.mkdirSync(codexDir, { recursive: true })
 fs.writeFileSync(
@@ -275,7 +275,7 @@ async function call(route, request) {
 const { apply: applyHost } = await import(pathToFileURL(ROOT + 'index.js').href)
 const host = makeHostContext()
 applyHost(host.ctx)
-const route = host.routes.find((item) => item.path === '/dsh-mydesk')
+const route = host.routes.find((item) => item.path === '/dsh-localdesk')
 
 console.log('\nHost half')
 check('route registered', Boolean(route))
@@ -285,7 +285,7 @@ check(
   JSON.stringify(jobEvents.map((entry) => entry.filter)),
 )
 
-const stateRes = await call(route, makeReq('/dsh-mydesk/state'))
+const stateRes = await call(route, makeReq('/dsh-localdesk/state'))
 check('state 200', stateRes.statusCode === 200, String(stateRes.statusCode))
 check('state is json', stateRes.headers['content-type']?.includes('application/json') === true)
 const state = JSON.parse(stateRes.body)
@@ -344,7 +344,7 @@ check('file targets are not clickable', fileItems.every((item) => item.jump === 
 
 const isolated = makeHostContext({ subprocess: { fail: true } })
 applyHost(isolated.ctx)
-const isolatedState = JSON.parse((await call(isolated.routes[0], makeReq('/dsh-mydesk/state'))).body)
+const isolatedState = JSON.parse((await call(isolated.routes[0], makeReq('/dsh-localdesk/state'))).body)
 const processSource = isolatedState.sources.find((source) => source.id === 'process')
 check('failing source reported', processSource?.health?.status === 'error', JSON.stringify(processSource?.health))
 check(
@@ -355,27 +355,27 @@ check(
 
 console.log('\nOpen route')
 const openRoute = route
-const appOk = await call(openRoute, makeReq('/dsh-mydesk/open', 'POST', JSON.stringify({ kind: 'app', app: 'Kim' })))
+const appOk = await call(openRoute, makeReq('/dsh-localdesk/open', 'POST', JSON.stringify({ kind: 'app', app: 'Kim' })))
 check('allowlisted app opens', appOk.statusCode === 200, appOk.body)
 check('open argv uses app name', host.subprocess.spawned.some((argv) => argv.includes('-a') && argv.includes('Kim')), JSON.stringify(host.subprocess.spawned.at(-1)))
-const appBad = await call(openRoute, makeReq('/dsh-mydesk/open', 'POST', JSON.stringify({ kind: 'app', app: 'Terminal' })))
+const appBad = await call(openRoute, makeReq('/dsh-localdesk/open', 'POST', JSON.stringify({ kind: 'app', app: 'Terminal' })))
 check('unlisted app rejected', appBad.statusCode === 400, appBad.body)
-const urlOk = await call(openRoute, makeReq('/dsh-mydesk/open', 'POST', JSON.stringify({ kind: 'url', url: 'https://example.com/x' })))
+const urlOk = await call(openRoute, makeReq('/dsh-localdesk/open', 'POST', JSON.stringify({ kind: 'url', url: 'https://example.com/x' })))
 check('https url opens', urlOk.statusCode === 200, urlOk.body)
-const urlBad = await call(openRoute, makeReq('/dsh-mydesk/open', 'POST', JSON.stringify({ kind: 'url', url: 'javascript:alert(1)' })))
+const urlBad = await call(openRoute, makeReq('/dsh-localdesk/open', 'POST', JSON.stringify({ kind: 'url', url: 'javascript:alert(1)' })))
 check('non-http url rejected', urlBad.statusCode === 400, urlBad.body)
-const openGet = await call(openRoute, makeReq('/dsh-mydesk/open', 'GET'))
+const openGet = await call(openRoute, makeReq('/dsh-localdesk/open', 'GET'))
 check('open rejects GET', openGet.statusCode === 405, String(openGet.statusCode))
-const openBadBody = await call(openRoute, makeReq('/dsh-mydesk/open', 'POST', 'not json'))
+const openBadBody = await call(openRoute, makeReq('/dsh-localdesk/open', 'POST', 'not json'))
 check('open rejects bad body', openBadBody.statusCode === 400, openBadBody.body)
-const statePost = await call(openRoute, makeReq('/dsh-mydesk/state', 'POST', '{}'))
+const statePost = await call(openRoute, makeReq('/dsh-localdesk/state', 'POST', '{}'))
 check('state rejects POST', statePost.statusCode === 405, String(statePost.statusCode))
-const unknown = await call(openRoute, makeReq('/dsh-mydesk/nope'))
+const unknown = await call(openRoute, makeReq('/dsh-localdesk/nope'))
 check('unknown path 404', unknown.statusCode === 404, String(unknown.statusCode))
 
 const rejecting = makeHostContext({ reject: 403 })
 applyHost(rejecting.ctx)
-const denied = await call(rejecting.routes[0], makeReq('/dsh-mydesk/state'))
+const denied = await call(rejecting.routes[0], makeReq('/dsh-localdesk/state'))
 check('untrusted request rejected', denied.statusCode === 403, String(denied.statusCode))
 
 /* -------------------------------------------------------------- client checks */
@@ -460,7 +460,7 @@ let clientSpec
 globalThis.window = { __ModuleLoader__: { load(spec) { clientSpec = spec } } }
 await import(pathToFileURL(ROOT + 'client.js').href)
 check('client module registers itself', Boolean(clientSpec))
-check('client id matches package', clientSpec?.id === 'dsh-mydesk', clientSpec?.id)
+check('client id matches package', clientSpec?.id === 'dsh-localdesk', clientSpec?.id)
 
 const clientModule = clientSpec.factory((name) => {
   if (name === 'react') return ReactStub
@@ -483,10 +483,10 @@ check('EN and ZH key sets match', enKeys.size === zhKeys.size && [...enKeys].eve
 const panellist = registrations.find((entry) => entry.options.name === 'sidebar.panellist')
 const main = registrations.find((entry) => entry.options.name === 'main')
 const overlay = registrations.find((entry) => entry.options.name === 'shell.overlay')
-check('panellist registration', panellist?.options.id === 'mydesk' && panellist.options.order === 7, JSON.stringify(panellist?.options))
+check('panellist registration', panellist?.options.id === 'localdesk' && panellist.options.order === 7, JSON.stringify(panellist?.options))
 check('panellist label localizes', panellist?.options.label?.() === '我的工作台', panellist?.options.label?.())
-check('main registration', main?.options.key === 'mydesk', JSON.stringify(main?.options))
-check('island registration', overlay?.options.id === 'mydesk-island' && overlay.options.order === 5, JSON.stringify(overlay?.options))
+check('main registration', main?.options.key === 'localdesk', JSON.stringify(main?.options))
+check('island registration', overlay?.options.id === 'localdesk-island' && overlay.options.order === 5, JSON.stringify(overlay?.options))
 
 function text(node, out = []) {
   if (node === null || node === undefined || node === false) return out
@@ -547,7 +547,7 @@ opened.length = 0
 fetches.length = 0
 for (const node of clickable) node.props.onClick()
 check('dsh rows open sessions', opened.includes('sess-alpha-0001'), JSON.stringify(opened))
-check('app rows call open route', fetches.some((entry) => entry.url === '/dsh-mydesk/open' && String(entry.body).includes('DeepSeek Harness')), JSON.stringify(fetches))
+check('app rows call open route', fetches.some((entry) => entry.url === '/dsh-localdesk/open' && String(entry.body).includes('DeepSeek Harness')), JSON.stringify(fetches))
 
 const processRows = collect(render(state), (node) => node.props?.role === 'button' && String(node.props.title ?? '').includes('pid'))
 check('process rows carry pid meta', processRows.length >= 1)
@@ -610,7 +610,7 @@ check('island rows route like the desk', opened.includes('sess-alpha-0001'), JSO
 const islandButtons = collect(islandExpanded, (node) => node.type === 'button' && node.props?.className === 'mi-open')
 panels.length = 0
 islandButtons[0]?.props.onClick()
-check('island opens the desk panel', panels.includes('mydesk'), JSON.stringify(panels))
+check('island opens the desk panel', panels.includes('localdesk'), JSON.stringify(panels))
 
 const islandEmpty = renderIsland({ ...emptyState, stats: { ...emptyState.stats } }, false)
 check('island hides itself when empty', islandEmpty === null)

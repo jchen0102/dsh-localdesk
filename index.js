@@ -1,5 +1,5 @@
 /**
- * dsh-mydesk — Host half.
+ * dsh-localdesk — Host half.
  *
  * A local change observatory: every source reports the same `Item` shape, one
  * read-only route aggregates them, and the browser only renders what it gets.
@@ -22,12 +22,12 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
-export const name = 'dsh-mydesk'
+export const name = 'dsh-localdesk'
 
 export const inject = ['webServer', 'connection', 'agents']
 
-const VERSION = '0.4.1'
-const ROUTE = '/dsh-mydesk'
+const VERSION = '0.4.2'
+const ROUTE = '/dsh-localdesk'
 const STATE_PATH = `${ROUTE}/state`
 const OPEN_PATH = `${ROUTE}/open`
 
@@ -51,10 +51,10 @@ const SECTION_ORDER = [
 ]
 
 /**
- * Home base for every filesystem source. `DSH_MYDESK_HOME` exists so the contract
+ * Home base for every filesystem source. `DSH_LOCALDESK_HOME` exists so the contract
  * probe can point all sources at a fixture tree instead of the developer's machine.
  */
-const HOME = process.env.DSH_MYDESK_HOME || os.homedir()
+const HOME = process.env.DSH_LOCALDESK_HOME || os.homedir()
 const CODEX_ROOT = path.join(HOME, '.codex', 'sessions')
 const CHANNEL_ROOT = path.join(HOME, '.dsh', 'channel-wechat')
 const CODEX_FILES = 12
@@ -931,7 +931,7 @@ export function apply(ctx) {
             jobCache.set(String(event.job.id), event.job)
           } catch {}
         }),
-      'dsh-mydesk: job event fold',
+      'dsh-localdesk: job event fold',
     )
   }
 
@@ -975,6 +975,6 @@ export function apply(ctx) {
           }
         },
       }),
-    'dsh-mydesk: read-only state + allowlisted open',
+    'dsh-localdesk: read-only state + allowlisted open',
   )
 }
