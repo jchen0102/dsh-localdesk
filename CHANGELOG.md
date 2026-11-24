@@ -24,6 +24,7 @@ All notable changes to this package. Format follows [Keep a Changelog](https://k
 
 - Added `repository`, `homepage`, and `bugs` metadata so the npm page links to the source.
 - README now carries a real window screenshot of the desk header (`assets/hero.png`); the PNG is included in the published package.
+- Island: metric labels are full words ("运行中" / "有变动") instead of abbreviations, hovering shows a small preview with the counts and the most relevant row, and decorative animations (sheen, breathing dot, gradients) are gone. The desk keeps the native DSH surface with a hover accent on rows.
 
 ## Unreleased
 

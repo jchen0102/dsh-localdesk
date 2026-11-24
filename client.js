@@ -71,12 +71,13 @@ window.__ModuleLoader__.load({
       hidden: 'more not shown',
       footer: 'Read-only · refreshes every 2.5s',
       islandTitle: 'My desk',
-      islandRun: 'run',
-      islandWait: 'wait',
-      islandChanged: 'chg',
+      islandRun: 'running',
+      islandWait: 'waiting',
+      islandChanged: 'changed',
       islandOpen: 'Open desk',
       islandHint: 'Esc to close',
       islandEmpty: 'Nothing to show',
+      islandPreviewHint: 'click to expand',
       islandStaleFlag: 'restart',
       islandSourceFlag: 'source error',
       searchPlaceholder: 'Filter by title, path, or owner',
@@ -146,12 +147,13 @@ window.__ModuleLoader__.load({
       hidden: '条未显示',
       footer: '只读 · 每 2.5 秒刷新一次',
       islandTitle: '我的工作台',
-      islandRun: '跑',
-      islandWait: '等',
-      islandChanged: '变',
+      islandRun: '运行中',
+      islandWait: '等待',
+      islandChanged: '有变动',
       islandOpen: '打开工作台',
       islandHint: 'Esc 收起',
       islandEmpty: '暂时没有可显示的',
+      islandPreviewHint: '点击展开',
       islandStaleFlag: '重启生效',
       islandSourceFlag: '源异常',
       searchPlaceholder: '按标题、路径或归属筛选',
@@ -166,7 +168,7 @@ window.__ModuleLoader__.load({
 
     const CSS = `
       .md-root{height:100%;overflow-y:auto;background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-primary)}
-      .md-inner{max-width:1060px;margin:0 auto;padding:22px 26px 30px;display:flex;flex-direction:column;gap:16px}
+      .md-inner{max-width:1060px;margin:0 auto;padding:22px 26px 32px;display:flex;flex-direction:column;gap:16px}
       .md-head{display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap}
       .md-headtext{flex:1 1 260px;min-width:0;display:flex;flex-direction:column;gap:3px}
       .md-h1{margin:0;font-size:20px;font-weight:650;letter-spacing:-0.012em}
@@ -175,8 +177,9 @@ window.__ModuleLoader__.load({
       .md-btn{appearance:none;border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);font:inherit;font-size:12px;line-height:1;padding:7px 11px;border-radius:8px;cursor:pointer}
       .md-btn:hover{background:var(--dsw-alias-bg-layer-2);border-color:var(--dsw-alias-border-l2)}
       .md-updated{font-size:11.5px;color:var(--dsw-alias-label-secondary);font-variant-numeric:tabular-nums}
-      .md-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:10px}
-      .md-stat{border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:2px}
+      .md-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:10px}
+      .md-stat{border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:2px;transition:border-color .15s ease}
+      .md-stat:hover{border-color:var(--dsw-alias-border-l2)}
       .md-statvalue{font-size:21px;font-weight:650;letter-spacing:-0.02em;font-variant-numeric:tabular-nums;line-height:1.15}
       .md-statlabel{font-size:11.5px;color:var(--dsw-alias-label-secondary)}
       .md-card{border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);border-radius:12px;overflow:hidden}
@@ -184,9 +187,11 @@ window.__ModuleLoader__.load({
       .md-cardtitle{font-size:13.5px;font-weight:600}
       .md-count{font-size:11px;font-variant-numeric:tabular-nums;color:var(--dsw-alias-label-secondary);border:1px solid var(--dsw-alias-border-l1);border-radius:999px;padding:1px 7px}
       .md-scope{margin-left:auto;font-size:11px;color:var(--dsw-alias-label-secondary);display:inline-flex;align-items:center;gap:5px}
-      .md-row{display:flex;align-items:center;gap:10px;padding:9px 14px;border-top:1px solid var(--dsw-alias-border-l1)}
+      .md-row{position:relative;display:flex;align-items:center;gap:10px;padding:9px 14px;border-top:1px solid var(--dsw-alias-border-l1);transition:background .12s ease}
+      .md-row::before{content:'';position:absolute;left:0;top:8px;bottom:8px;width:2px;border-radius:2px;background:transparent;transition:background .12s ease}
       .md-row--click{cursor:pointer}
       .md-row--click:hover{background:var(--dsw-alias-bg-layer-2)}
+      .md-row--click:hover::before{background:var(--dsw-alias-border-l2)}
       .md-row--click:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:-2px}
       .md-dot{flex:none;width:7px;height:7px;border-radius:999px}
       .md-main{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:2px}
@@ -210,24 +215,34 @@ window.__ModuleLoader__.load({
       .md-notice{font-size:11.5px;color:var(--dsw-alias-state-error-primary)}
       .md-toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
       .md-search{flex:1 1 220px;min-width:150px;height:30px;padding:0 10px;border-radius:8px;border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);font:inherit;font-size:12.5px;outline:none}
+      .md-search::placeholder{color:var(--dsw-alias-label-secondary)}
       .md-search:focus{border-color:var(--dsw-alias-brand-primary)}
       .md-filters{display:inline-flex;gap:4px;flex:none}
       .md-chipbtn{appearance:none;font:inherit;font-size:11.5px;line-height:1;padding:6px 9px;border-radius:999px;border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-secondary);cursor:pointer}
       .md-chipbtn:hover{background:var(--dsw-alias-bg-layer-2)}
       .md-chipbtn--active{color:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-2)}
       .mi-wrap{position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:60;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none}
-      .mi-pill{pointer-events:auto;display:inline-flex;align-items:center;gap:7px;height:30px;padding:0 12px;border-radius:999px;border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-overlay);box-shadow:0 2px 12px rgba(0,0,0,.14);color:var(--dsw-alias-label-primary);font:inherit;font-size:12px;cursor:pointer}
+      .mi-pill{pointer-events:auto;display:inline-flex;align-items:center;gap:8px;height:30px;padding:0 12px;border-radius:999px;border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-overlay);box-shadow:0 2px 10px rgba(0,0,0,.10);color:var(--dsw-alias-label-primary);font:inherit;font-size:12px;cursor:pointer}
       .mi-pill:hover{border-color:var(--dsw-alias-border-l2)}
       .mi-pill:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px}
-      .mi-dot{width:7px;height:7px;border-radius:999px;background:var(--dsw-alias-state-success-primary);flex:none}
+      .mi-dot{width:6px;height:6px;border-radius:999px;flex:none;background:var(--dsw-alias-state-success-primary)}
       .mi-dot--error{background:var(--dsw-alias-state-error-primary)}
       .mi-dot--warn{background:var(--dsw-alias-state-warning-primary,#d97706)}
+      .mi-preview{pointer-events:none;width:min(340px,90vw);border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-overlay);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.14);padding:9px 11px;display:flex;flex-direction:column;gap:5px}
+      .mi-previewline{font-size:11px;color:var(--dsw-alias-label-secondary);font-variant-numeric:tabular-nums}
+      .mi-previewrow{display:flex;align-items:center;gap:7px;min-width:0}
+      .mi-previewtitle{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12.5px}
+      .mi-previewstatus{flex:none;font-size:10.5px;color:var(--dsw-alias-label-secondary)}
+      .mi-previewhint{font-size:10.5px;color:var(--dsw-alias-label-secondary)}
       .mi-flag{font-size:10px;line-height:1;padding:2px 6px;border-radius:999px;border:1px solid var(--dsw-alias-border-l1);color:var(--dsw-alias-label-secondary);white-space:nowrap}
       .mi-flag--error{color:var(--dsw-alias-state-error-primary);border-color:var(--dsw-alias-state-error-primary)}
-      .mi-metric{display:inline-flex;align-items:baseline;gap:2px;font-variant-numeric:tabular-nums;color:var(--dsw-alias-label-primary)}
+      .mi-metric{display:inline-flex;align-items:baseline;gap:4px;font-variant-numeric:tabular-nums}
       .mi-num{font-weight:650}
+      .mi-label{font-size:11px;color:var(--dsw-alias-label-secondary)}
+      .mi-metric--run .mi-num{color:var(--dsw-alias-state-success-primary)}
+      .mi-metric--wait .mi-num{color:var(--dsw-alias-state-warning-primary,#d97706)}
       .mi-sep{width:1px;height:11px;background:var(--dsw-alias-border-l1)}
-      .mi-card{pointer-events:auto;width:min(380px,92vw);border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-overlay);border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.2);overflow:hidden;display:flex;flex-direction:column}
+      .mi-card{pointer-events:auto;width:min(380px,92vw);border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-overlay);border-radius:12px;box-shadow:0 12px 32px rgba(0,0,0,.18);overflow:hidden;display:flex;flex-direction:column}
       .mi-head{display:flex;align-items:baseline;gap:8px;padding:10px 13px 8px}
       .mi-title{font-size:12.5px;font-weight:600}
       .mi-total{margin-left:auto;font-size:11px;color:var(--dsw-alias-label-secondary);font-variant-numeric:tabular-nums}
@@ -657,6 +672,15 @@ window.__ModuleLoader__.load({
         const [, bump] = React.useState(0)
         React.useEffect(() => locale.subscribe(() => bump((value) => value + 1)), [])
         const [expanded, setExpanded] = React.useState(false)
+        const [hovered, setHovered] = React.useState(false)
+        const hoverTimer = React.useRef(null)
+        const clearHoverTimer = () => {
+          if (hoverTimer.current) {
+            clearTimeout(hoverTimer.current)
+            hoverTimer.current = null
+          }
+        }
+        React.useEffect(() => clearHoverTimer, [])
         const [state] = useDesk(expanded ? POLL_MS : 10000)
         const rootRef = React.useRef(null)
         const t = locale.bind(NS)
@@ -740,22 +764,49 @@ window.__ModuleLoader__.load({
             type: 'button',
             'aria-expanded': expanded,
             title: pillTitle,
-            onClick: () => setExpanded((value) => !value),
+            onClick: () => {
+              clearHoverTimer()
+              setHovered(false)
+              setExpanded((value) => !value)
+            },
           },
           h('span', { className: 'mi-dot' + (failed ? ' mi-dot--error' : staleHost ? ' mi-dot--warn' : '') }),
           metrics.map(([key, value], index) => [
             index > 0 ? h('span', { className: 'mi-sep', key: 'sep:' + key }) : null,
             h(
               'span',
-              { className: 'mi-metric', key: 'metric:' + key },
+              { className: 'mi-metric mi-metric--' + key, key: 'metric:' + key },
               h('span', { className: 'mi-num' }, String(value)),
-              h('span', null, metricLabel(key)),
+              h('span', { className: 'mi-label' }, metricLabel(key)),
             ),
           ]),
           flag
             ? h('span', { className: 'mi-flag' + (failed ? ' mi-flag--error' : ''), key: 'flag' }, flag)
             : null,
         )
+
+        const previewItem = top[0]
+        const previewLine = [stats.running ? `${stats.running} ${t('islandRun')}` : '', stats.changed ? `${stats.changed} ${t('islandChanged')}` : '']
+          .filter(Boolean)
+          .join(' · ')
+        const preview =
+          !expanded && hovered
+            ? h(
+                'div',
+                { className: 'mi-preview', role: 'status' },
+                previewLine ? h('div', { className: 'mi-previewline' }, previewLine) : null,
+                previewItem
+                  ? h(
+                      'div',
+                      { className: 'mi-previewrow' },
+                      h('span', { className: 'mi-dot', style: { background: toneOf(previewItem.status) } }),
+                      h('span', { className: 'mi-previewtitle' }, String(previewItem.title ?? '')),
+                      h('span', { className: 'mi-previewstatus' }, statusTextLabel(t, previewItem.statusText) || statusLabel(t, previewItem.status)),
+                    )
+                  : h('div', { className: 'mi-previewhint' }, t('islandEmpty')),
+                h('div', { className: 'mi-previewhint' }, t('islandPreviewHint')),
+              )
+            : null
 
         const card = expanded
           ? h(
@@ -798,9 +849,22 @@ window.__ModuleLoader__.load({
 
         return h(
           'div',
-          { className: 'mi-wrap', ref: rootRef },
+          {
+            className: 'mi-wrap',
+            ref: rootRef,
+            onMouseEnter: () => {
+              if (expanded) return
+              clearHoverTimer()
+              hoverTimer.current = setTimeout(() => setHovered(true), 220)
+            },
+            onMouseLeave: () => {
+              clearHoverTimer()
+              setHovered(false)
+            },
+          },
           h('style', null, CSS),
           pill,
+          preview,
           card,
         )
       }

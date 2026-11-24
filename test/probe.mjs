@@ -587,7 +587,7 @@ check('failure state renders', failedText.some((line) => line.includes('HTTP 401
 /* ---------------------------------------------------------------- island */
 
 function renderIsland(data, expanded) {
-  ReactState.queue = [undefined, expanded, { status: 'ready', data, error: null, at: now }, undefined]
+  ReactState.queue = [undefined, expanded, undefined, { status: 'ready', data, error: null, at: now }, undefined]
   const element = overlay.component({ ctx: slotCtx })
   return element.type(element.props)
 }
@@ -595,7 +595,7 @@ function renderIsland(data, expanded) {
 const islandCollapsed = renderIsland(state, false)
 const collapsedText = text(islandCollapsed)
 check('island renders when there is work', Boolean(islandCollapsed))
-check('island shows run/wait/chg counts', ['7', '1'].every((value) => collapsedText.includes(value)) && collapsedText.includes('跑'), collapsedText.join('|'))
+check('island shows run/wait/chg counts', ['7', '1'].every((value) => collapsedText.includes(value)) && collapsedText.includes('运行中'), collapsedText.join('|'))
 check('island pill is a button', collect(islandCollapsed, (node) => node.type === 'button').length === 1)
 
 const islandExpanded = renderIsland(state, true)
@@ -614,6 +614,11 @@ check('island opens the desk panel', panels.includes('localdesk'), JSON.stringif
 
 const islandEmpty = renderIsland({ ...emptyState, stats: { ...emptyState.stats } }, false)
 check('island hides itself when empty', islandEmpty === null)
+
+ReactState.queue = [undefined, false, true, { status: 'ready', data: state, error: null, at: now }, undefined]
+const previewEl = overlay.component({ ctx: slotCtx })
+const previewText = text(previewEl.type(previewEl.props))
+check('island hover preview names the counts and the action', previewText.some((line) => line.includes('点击展开')) && previewText.some((line) => line.includes('运行中')), previewText.join('|'))
 
 const staleIsland = text(renderIsland({ ...state, version: '0.0.9' }, false))
 check('island names a stale Host instead of a bare dot', staleIsland.some((line) => line.includes('重启生效')), staleIsland.join('|'))
