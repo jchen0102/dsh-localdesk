@@ -18,6 +18,13 @@ All notable changes to this package. Format follows [Keep a Changelog](https://k
 
 - Renamed the package from `dsh-mydesk` to `dsh-localdesk`: the old name was published to npm by another author before this package could claim it. Routes moved to `/dsh-localdesk/*`, slot ids to `localdesk` / `localdesk-island`, and the test seam to `DSH_LOCALDESK_HOME`. Display name ("My desk" / 「我的工作台」) is unchanged.
 
+## 0.4.3 - 2026-11-24
+
+### Changed
+
+- Added `repository`, `homepage`, and `bugs` metadata so the npm page links to the source.
+- README now carries a real window screenshot of the desk header (`assets/hero.png`); the PNG is included in the published package.
+
 ## Unreleased
 
 ### Fixed

@@ -1,6 +1,6 @@
 {
   "name": "dsh-localdesk",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "private": false,
   "type": "module",
   "description": "A local change observatory for DSH: Sessions, jobs, schedules, goals, Team tasks, Codex sessions, the WeChat channel, app data changes and running local apps in one read-only desk.",
@@ -48,5 +48,13 @@
   "scripts": {
     "test": "node test/probe.mjs",
     "preflight": "node --check index.js && node --check client.js && node test/probe.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jchen0102/dsh-localdesk.git"
+  },
+  "homepage": "https://github.com/jchen0102/dsh-localdesk#readme",
+  "bugs": {
+    "url": "https://github.com/jchen0102/dsh-localdesk/issues"
   }
 }

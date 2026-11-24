@@ -26,7 +26,7 @@ export const name = 'dsh-localdesk'
 
 export const inject = ['webServer', 'connection', 'agents']
 
-const VERSION = '0.4.2'
+const VERSION = '0.4.3'
 const ROUTE = '/dsh-localdesk'
 const STATE_PATH = `${ROUTE}/state`
 const OPEN_PATH = `${ROUTE}/open`

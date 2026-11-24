@@ -11,7 +11,7 @@ window.__ModuleLoader__.load({
     const React = require('react')
     const h = React.createElement
     const NS = 'dsh-localdesk'
-    const VERSION = '0.4.2'
+    const VERSION = '0.4.3'
     const POLL_MS = 2500
 
     const EN = {
